@@ -1,0 +1,31 @@
+{
+  "name": "tutor-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "기계공학 과목별 AI 튜터 (React + Express + Claude API)",
+  "type": "module",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "node --watch server/index.js",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.132.1",
+    "express": "5.3.0",
+    "multer": "2.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.1.2",
+    "supertest": "7.3.1",
+    "vite": "8.3.4",
+    "vitest": "5.0.3"
+  }
+}
