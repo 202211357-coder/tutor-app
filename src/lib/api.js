@@ -27,7 +27,8 @@ export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
     try {
       response = await fetchImpl(path, options);
     } catch {
-      throw new ApiError('NETWORK', '서버에 연결할 수 없습니다. 네트워크 상태를 확인하세요.');
+      // 서버는 이 PC에서 돌고 있으므로, 인터넷이 아니라 앱 서버(검은 창)가 꺼졌는지를 안내한다.
+      throw new ApiError('NETWORK', '앱 서버에 연결할 수 없습니다. start-tutor.bat 검은 창이 열려 있는지 확인하고, 닫혔다면 다시 실행하세요.');
     }
 
     let body = null;

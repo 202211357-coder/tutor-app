@@ -77,6 +77,15 @@ describe('askTutor: 업로드 실패', () => {
     });
   });
 
+  it('연결 실패 안내는 인터넷이 아니라 앱 서버(검은 창)를 가리킨다', async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    const error = await createApi(fetchImpl).fetchProblems('statics').catch((e) => e);
+    expect(error.message).toContain('start-tutor.bat');
+    expect(error.message).not.toContain('네트워크');
+  });
+
   it('서버가 JSON 오류를 주면 그 코드와 메시지를 쓴다', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(415, { code: 'CONTENT_MISMATCH', message: '내용 불일치' }));
     await expect(createApi(fetchImpl).askTutor({ ...baseInput, imageFile: pngFile() })).rejects.toMatchObject({
