@@ -17,6 +17,17 @@ function ProblemCard({ problem }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  const [hintCount, setHintCount] = useState(0);
+  const [solution, setSolution] = useState(null);
+
+  async function handleShowSolution() {
+    setError('');
+    try {
+      setSolution(await api.fetchSolution(problem.id));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   async function handleGrade(event) {
     event.preventDefault();
@@ -67,6 +78,43 @@ function ProblemCard({ problem }) {
         <p className="total">
           합계 {result.earned} / {result.max}점 ({result.percent}%)
         </p>
+      )}
+
+      {hintCount > 0 && (
+        <ol className="hints">
+          {problem.hints.slice(0, hintCount).map((hint, i) => (
+            <li key={i}>
+              <strong>힌트 {i + 1}</strong> {hint}
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="study-actions">
+        {hintCount < problem.hints.length && (
+          <button type="button" onClick={() => setHintCount((n) => n + 1)}>
+            힌트 보기 ({hintCount}/{problem.hints.length})
+          </button>
+        )}
+        {/* 먼저 풀어 보도록, 한 번 이상 채점한 뒤에만 풀이를 열 수 있다. */}
+        {!solution && (
+          <button type="button" onClick={handleShowSolution} disabled={!result} title={result ? '' : '먼저 채점해 보세요'}>
+            풀이 보기
+          </button>
+        )}
+      </div>
+
+      {solution && (
+        <div className="solution">
+          <h4>풀이</h4>
+          <ol>
+            {solution.steps.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+          <p className="answers">
+            정답: {solution.answers.map((a) => `${a.label} ${a.value} ${a.unit}`.trim()).join(' / ')}
+          </p>
+        </div>
       )}
     </article>
   );

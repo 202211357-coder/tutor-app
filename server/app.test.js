@@ -43,6 +43,40 @@ describe('GET /api/subjects, /api/problems', () => {
   });
 });
 
+describe('GET /api/config', () => {
+  it('튜터 서비스가 설정되어 있으면 tutorEnabled: true', async () => {
+    const res = await request(createApp({ tutorService: { ...tutorService, isConfigured: true } })).get('/api/config').expect(200);
+    expect(res.body).toEqual({ tutorEnabled: true });
+  });
+
+  it('API 키가 없으면 tutorEnabled: false (키 값은 응답에 없음)', async () => {
+    const res = await request(createApp({ tutorService: { ...tutorService, isConfigured: false } })).get('/api/config').expect(200);
+    expect(res.body).toEqual({ tutorEnabled: false });
+  });
+});
+
+describe('GET /api/problems/:id/solution', () => {
+  it('풀이 단계와 정답을 돌려준다', async () => {
+    const res = await request(app).get('/api/problems/statics-cantilever/solution').expect(200);
+    expect(res.body.problemId).toBe('statics-cantilever');
+    expect(res.body.steps.length).toBeGreaterThan(0);
+    expect(res.body.answers).toEqual([
+      { label: '(a)', value: 3, unit: 'kN' },
+      { label: '(b)', value: 6, unit: 'kN·m' },
+    ]);
+  });
+
+  it('없는 문제 → 404', async () => {
+    const res = await request(app).get('/api/problems/nope/solution').expect(404);
+    expect(res.body.code).toBe('UNKNOWN_PROBLEM');
+  });
+
+  it('문제 목록에는 힌트만 있고 풀이는 없다', async () => {
+    const res = await request(app).get('/api/problems?subject=dynamics').expect(200);
+    expect(res.body.every((p) => p.hints.length > 0 && !('solution' in p))).toBe(true);
+  });
+});
+
 describe('POST /api/grade', () => {
   const beam = PROBLEMS.find((p) => p.id === 'statics-simply-supported-beam');
 

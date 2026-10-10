@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { convert, lookupUnit, normalizeUnitText, parseQuantity } from './units.js';
 
+const { PI } = Math;
+
 describe('parseQuantity', () => {
   it.each([
     ['12.5 kN', 12.5, 'kN'],
@@ -14,6 +16,8 @@ describe('parseQuantity', () => {
     ['1.2×10^3 N', 1200, 'N'],
     ['1.2 x 10^-2 m', 0.012, 'm'],
     ['12,500 N', 12500, 'N'],
+    ['62.5%', 62.5, '%'],
+    ['1.42°', 1.42, '°'],
     ['42', 42, ''],
   ])('%j → %d %j', (text, value, unitText) => {
     const q = parseQuantity(text);
@@ -38,6 +42,7 @@ describe('normalizeUnitText / lookupUnit', () => {
     ['m³/s', 'm3/s'],
     ['m/s^2', 'm/s2'],
     ['N/mm²', 'N/mm2'],
+    ['mm⁴', 'mm4'],
   ])('%j 를 %j 로 정규화한다', (input, expected) => {
     expect(normalizeUnitText(input)).toBe(expected);
   });
@@ -79,6 +84,14 @@ describe('convert', () => {
     [2, 'kN·m', 'N·mm', 2e6],
   ])('%d %s = %d %s', (value, from, to, expected) => {
     expect(convert(value, from, to)).toBeCloseTo(expected, 9);
+  });
+
+  it('각도·단면 2차 모멘트·백분율 환산', () => {
+    expect(convert(180, 'deg', 'rad')).toBeCloseTo(PI, 12);
+    expect(convert(1, 'rad', '°')).toBeCloseTo(180 / PI, 12);
+    expect(convert(4.1667e6, 'mm⁴', 'm⁴')).toBeCloseTo(4.1667e-6, 15);
+    expect(convert(1, 'cm4', 'mm4')).toBeCloseTo(1e4, 9);
+    expect(convert(62.5, '%', '%')).toBe(62.5);
   });
 
   it('차원이 다르면 예외', () => {

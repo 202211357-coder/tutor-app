@@ -149,6 +149,13 @@ describe('createTutorService.ask: 오류 처리', () => {
   });
 });
 
+describe('isConfigured', () => {
+  it('클라이언트가 있으면 true, 없으면 false', () => {
+    expect(createTutorService({ client: mockClient().client }).isConfigured).toBe(true);
+    expect(createTutorService({ client: null }).isConfigured).toBe(false);
+  });
+});
+
 describe('sanitizeHistory', () => {
   it('배열이 아니면 빈 배열', () => {
     expect(sanitizeHistory(undefined)).toEqual([]);

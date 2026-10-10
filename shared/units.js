@@ -62,7 +62,20 @@ const UNIT_TABLE = {
   'kg/s': { dim: 'mass_flow', factor: 1 },
   // 밀도
   'kg/m3': { dim: 'density', factor: 1 },
+  // 각도
+  rad: { dim: 'angle', factor: 1 },
+  deg: { dim: 'angle', factor: Math.PI / 180 },
+  '°': { dim: 'angle', factor: Math.PI / 180 },
+  // 단면 2차 모멘트
+  m4: { dim: 'second_moment', factor: 1 },
+  cm4: { dim: 'second_moment', factor: 1e-8 },
+  mm4: { dim: 'second_moment', factor: 1e-12 },
+  // 무차원 비율 (효율 등). 단위 없는 답안도 이 차원으로 취급한다.
+  '%': { dim: 'ratio', factor: 0.01 },
 };
+
+/** 단위 없이 쓴 무차원 값 */
+export const RATIO_UNIT = Object.freeze({ key: '', dim: 'ratio', factor: 1 });
 
 // 대소문자만 다른 입력(KN, mpa 등)을 허용하되, 소문자로 바꿨을 때 충돌하는 키(예: m/M 접두어)는 제외한다.
 const LOWERCASE_ALIASES = (() => {
@@ -86,6 +99,7 @@ export function normalizeUnitText(text) {
     .replace(/[·⋅*×]/g, '.')
     .replace(/²/g, '2')
     .replace(/³/g, '3')
+    .replace(/⁴/g, '4')
     .replace(/\^/g, '')
     .replace(/^ℓ/, 'L');
 }

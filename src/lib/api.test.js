@@ -122,6 +122,18 @@ describe('기타 API', () => {
     expect(fetchImpl.mock.calls[0][0]).toBe('/api/problems?subject=a%20b%26c');
   });
 
+  it('fetchSolution은 문제 id를 URL 인코딩한다', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { steps: [] }));
+    await createApi(fetchImpl).fetchSolution('a/b');
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/problems/a%2Fb/solution');
+  });
+
+  it('fetchConfig는 /api/config를 호출한다', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { tutorEnabled: false }));
+    expect(await createApi(fetchImpl).fetchConfig()).toEqual({ tutorEnabled: false });
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/config');
+  });
+
   it('gradeAnswers는 JSON 본문으로 보낸다', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(200, { earned: 1 }));
     await createApi(fetchImpl).gradeAnswers('p1', { '(a)': '5 kN' });

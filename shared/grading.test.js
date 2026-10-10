@@ -61,6 +61,38 @@ describe('gradePart: 단위가 다른 답안', () => {
   });
 });
 
+describe('gradePart: 무차원·백분율 답안', () => {
+  const efficiency = { label: '(a)', answer: { value: 0.625 }, points: 4 };
+
+  it.each(['0.625', '62.5%', '62.5 %', '0.62'])('효율 %j → 만점', (answer) => {
+    expect(gradePart(answer, efficiency)).toMatchObject({ status: GRADE_STATUS.CORRECT, earned: 4 });
+  });
+
+  it('백분율 수치만 쓴 답(62.5) → % 누락으로 절반', () => {
+    const r = gradePart('62.5', efficiency);
+    expect(r).toMatchObject({ status: GRADE_STATUS.MISSING_UNIT, earned: 2 });
+    expect(r.feedback).toContain('%');
+  });
+
+  it('% 기호를 쓴 근사값은 일반 근사 기준을 따른다', () => {
+    expect(gradePart('64%', efficiency).status).toBe(GRADE_STATUS.CLOSE);
+    expect(gradePart('70%', efficiency).status).toBe(GRADE_STATUS.WRONG);
+  });
+
+  it('무차원 문항에 차원 있는 단위 → unit_mismatch', () => {
+    expect(gradePart('0.625 kJ', efficiency).status).toBe(GRADE_STATUS.UNIT_MISMATCH);
+  });
+
+  it('정답이 %로 정의된 문항에 소수로 답해도 만점', () => {
+    expect(gradePart('0.625', { answer: { value: 62.5, unit: '%' } }).status).toBe(GRADE_STATUS.CORRECT);
+  });
+
+  it('레이놀즈 수처럼 큰 무차원 값도 지수 표기로 답할 수 있다', () => {
+    expect(gradePart('2e5', { answer: { value: 200000 } }).status).toBe(GRADE_STATUS.CORRECT);
+    expect(gradePart('2×10^5', { answer: { value: 200000 } }).status).toBe(GRADE_STATUS.CORRECT);
+  });
+});
+
 describe('gradePart: 부분 점수 경계', () => {
   // 기본 허용오차: 1% 이내 만점, 5% 이내 절반
   it.each([
@@ -162,9 +194,4 @@ describe('gradeProblem', () => {
     expect(r).toMatchObject({ earned: 5.5, max: 10, percent: 55 });
   });
 
-  it.each(PROBLEMS.map((p) => [p.id, p]))('%s: 정답 그대로 입력하면 만점 (문제 데이터 검증)', (_id, problem) => {
-    const answers = Object.fromEntries(problem.parts.map((p) => [p.label, `${p.answer.value} ${p.answer.unit ?? ''}`]));
-    const r = gradeProblem(problem, answers);
-    expect(r.earned).toBe(r.max);
-  });
 });

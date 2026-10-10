@@ -48,9 +48,13 @@ export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
   }
 
   return {
+    fetchConfig: () => request('/api/config'),
+
     fetchSubjects: () => request('/api/subjects'),
 
     fetchProblems: (subjectId) => request(`/api/problems?subject=${encodeURIComponent(subjectId)}`),
+
+    fetchSolution: (problemId) => request(`/api/problems/${encodeURIComponent(problemId)}/solution`),
 
     gradeAnswers: (problemId, answers) =>
       request('/api/grade', {

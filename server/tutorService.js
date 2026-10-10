@@ -67,6 +67,9 @@ function mapApiError(error) {
  */
 export function createTutorService({ client, model = DEFAULT_MODEL }) {
   return {
+    // API 키가 없으면 false. 화면에서 튜터 탭을 숨기는 데 쓴다.
+    isConfigured: Boolean(client),
+
     async ask({ subjectId, mode, question, history = [], image }) {
       // 과목·모드가 잘못되면 UnknownSubjectError / UnknownModeError가 그대로 올라간다.
       const systemPrompt = buildSystemPrompt(subjectId, { mode });

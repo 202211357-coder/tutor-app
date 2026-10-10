@@ -4,7 +4,7 @@ import express from 'express';
 import multer from 'multer';
 import { gradeProblem } from '../shared/grading.js';
 import { detectImageType, IMAGE_ERROR, MAX_IMAGE_BYTES, validateImageMeta } from '../shared/imagePolicy.js';
-import { findProblem, listPublicProblems } from '../shared/problems.js';
+import { findProblem, getSolution, listPublicProblems } from '../shared/problems.js';
 import { DEFAULT_MODE, SUBJECTS, UnknownModeError, UnknownSubjectError } from '../shared/subjects.js';
 import { TutorServiceError } from './tutorService.js';
 
@@ -45,11 +45,16 @@ function parseHistory(raw) {
 }
 
 /**
- * @param {{tutorService: {ask: Function}, staticDir?: string}} deps
+ * @param {{tutorService: {ask: Function, isConfigured?: boolean}, staticDir?: string}} deps
  */
 export function createApp({ tutorService, staticDir }) {
   const app = express();
   app.use(express.json({ limit: '100kb' }));
+
+  // 화면 구성용 설정. API 키 자체는 절대 내보내지 않고, 설정 여부만 알려 준다.
+  app.get('/api/config', (_req, res) => {
+    res.json({ tutorEnabled: tutorService.isConfigured !== false });
+  });
 
   app.get('/api/subjects', (_req, res) => {
     res.json(SUBJECTS.map(({ id, name, description }) => ({ id, name, description })));
@@ -58,6 +63,12 @@ export function createApp({ tutorService, staticDir }) {
   app.get('/api/problems', (req, res) => {
     const subjectId = typeof req.query.subject === 'string' ? req.query.subject : undefined;
     res.json(listPublicProblems(subjectId));
+  });
+
+  app.get('/api/problems/:problemId/solution', (req, res) => {
+    const problem = findProblem(req.params.problemId);
+    if (!problem) return sendError(res, 404, 'UNKNOWN_PROBLEM', '문제를 찾을 수 없습니다.');
+    res.json(getSolution(problem));
   });
 
   app.post('/api/grade', (req, res) => {
