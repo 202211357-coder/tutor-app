@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
 import { createApp } from './app.js';
+import { openBrowser } from './openBrowser.js';
 import { createTutorService, DEFAULT_MODEL } from './tutorService.js';
 
 // .env가 있으면 읽는다 (Node 20.12+). 없으면 시스템 환경 변수를 그대로 쓴다.
@@ -28,5 +29,8 @@ const app = createApp({
 });
 
 app.listen(port, () => {
-  console.log(`[tutor-app] http://localhost:${port} (model: ${model})`);
+  const url = `http://localhost:${port}`;
+  console.log(`[tutor-app] ${url} (model: ${model})`);
+  // start-tutor.bat이 설정한다. 서버가 실제로 요청을 받을 수 있게 된 뒤에 브라우저를 연다.
+  if (process.env.OPEN_BROWSER === '1') openBrowser(url);
 });
