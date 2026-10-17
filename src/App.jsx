@@ -2,29 +2,13 @@ import { useEffect, useState } from 'react';
 import { api } from './lib/api.js';
 import { tipOfTheDay } from './lib/teacher.js';
 import HistoryView from './components/HistoryView.jsx';
+import ProfessorIcon from './components/ProfessorIcon.jsx';
 import ProblemSolver from './components/ProblemSolver.jsx';
 import TutorChat from './components/TutorChat.jsx';
 
 const TUTOR_TAB = { id: 'tutor', label: '선생님께 질문' };
 const PRACTICE_TAB = { id: 'practice', label: '연습 문제' };
 const HISTORY_TAB = { id: 'history', label: '성적표' };
-
-/** 칠판 옆에 서 있는 선생님 (장식용 그림) */
-function TeacherIcon() {
-  return (
-    <svg className="teacher-icon" viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="24" r="13" fill="#f6d7b8" />
-      <path d="M19 22c1-9 7-13 13-13s12 4 13 13c-4-4-9-5-13-5s-9 1-13 5z" fill="#3b2f2a" />
-      <circle cx="27" cy="25" r="3.6" fill="none" stroke="#3b2f2a" strokeWidth="1.6" />
-      <circle cx="37" cy="25" r="3.6" fill="none" stroke="#3b2f2a" strokeWidth="1.6" />
-      <path d="M30.6 25h2.8" stroke="#3b2f2a" strokeWidth="1.6" />
-      <path d="M28 31c2.4 2 5.6 2 8 0" fill="none" stroke="#3b2f2a" strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M14 60c0-11 8-18 18-18s18 7 18 18z" fill="#4a6fa5" />
-      <path d="M32 42l-4 7 4 4 4-4z" fill="#fbf8f1" />
-      <path d="M46 41l10-14" stroke="#f3efe6" strokeWidth="3" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export default function App() {
   const [subjects, setSubjects] = useState([]);
@@ -67,7 +51,7 @@ export default function App() {
               <strong>오늘의 한마디</strong>
               {tipOfTheDay()}
             </p>
-            <TeacherIcon />
+            <ProfessorIcon />
           </div>
         </div>
 

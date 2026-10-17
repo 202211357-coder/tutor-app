@@ -114,9 +114,10 @@ body {
 }
 
 .teacher-icon {
-  width: 64px;
-  height: 64px;
+  width: 76px;
+  height: 76px;
   flex: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }
 
 .speech {
@@ -748,8 +749,8 @@ button:disabled {
   }
 
   .teacher-icon {
-    width: 48px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
   }
 
   .desk {
