@@ -49,6 +49,21 @@ npm run dev:server   # 터미널 1: Express 서버 (3001)
 npm run dev          # 터미널 2: Vite 개발 서버 (5173), /api 요청은 3001로 전달
 ```
 
+## 웹 버전 (GitHub Pages)
+
+노트북을 켜지 않아도 휴대폰·다른 PC에서 쓸 수 있는 웹 버전입니다. 서버 없이 문제 생성, 채점, 풀이, 학습 현황을 모두 브라우저 안에서 처리합니다.
+
+- 주소: `https://202211357-coder.github.io/tutor-app/`
+- `main` 브랜치에 push되면 `.github/workflows/pages.yml`이 테스트 후 자동으로 배포합니다. Actions 탭에서 수동으로 실행할 수도 있습니다.
+- 처음 한 번만 설정이 필요합니다.
+  1. 무료 계정은 공개 저장소에서만 Pages를 쓸 수 있습니다. 저장소 Settings → General → Danger Zone → Change visibility에서 Public으로 바꿉니다.
+  2. Settings → Pages → Build and deployment → Source를 **GitHub Actions**로 선택합니다.
+- PC 버전과 다른 점
+  - AI 질문 탭이 없습니다(API 키를 웹에 둘 수 없기 때문).
+  - 학습 기록은 기기·브라우저마다 따로 저장됩니다(localStorage). 브라우저 사이트 데이터를 지우면 기록도 지워집니다.
+  - 정답 계산 코드가 페이지에 포함되므로, 마음먹으면 정답을 볼 수 있습니다. 혼자 공부하는 용도를 전제로 합니다.
+- 로컬에서 미리 보기: `npm run build:pages` 후 `npx vite preview --mode pages` → `http://localhost:4173/tutor-app/`
+
 ## 테스트
 
 ```powershell
@@ -67,19 +82,22 @@ Claude API는 실제로 호출하지 않습니다. 호출부(`client.beta.messag
 | `server/tutorService.test.js` | Claude 요청 구성(과목 프롬프트, 이미지 블록, 이력), 거절·잘림 처리, SDK 오류 변환 |
 | `server/app.test.js` | API 라우트: 업로드 예외(415/413/400), 입력 검증, 오류 응답 형식, 설정·풀이·학습 기록 API |
 | `server/historyStore.test.js` | 기록 파일 저장·재시작 후 유지, 깨진 파일 보관 후 복구, 최대 개수, 원자적 쓰기 |
-| `server/historySummary.test.js` | 과목별 진도·최고 점수, 다시 풀어 볼 문제 정렬, 최근 기록, 삭제된 문제 처리 |
+| `shared/historySummary.test.js` | 과목별 진도·최고 점수, 다시 풀어 볼 문제 정렬, 최근 기록, 삭제된 문제 처리 |
 | `server/openBrowser.test.js` | 운영체제별 브라우저 실행 명령, 실행 실패 시 서버 유지 |
 | `src/lib/teacher.test.js` | 과목별 오늘의 강의 노트(과목마다 10개 이상, 중복 없음, 하루 동안 고정), 점수별 튜터 코멘트(존댓말 평서형), 채점 표시, 변형 문제 seed 범위 |
 | `src/lib/variants.test.js` | 새 수치로 풀기: 지금·최근 10개와 같은 수치면 다시 뽑기, 시도 횟수 제한, 오류 전달 |
 | `src/lib/problemCache.test.js` | 과목별 문제 목록 미리 받기·재사용, 실패 시 재시도 |
 | `src/lib/api.test.js` | 클라이언트 업로드: 전송 전 검증, 네트워크 실패, 서버 오류 응답 처리 |
+| `src/lib/localApi.test.js` | 웹 버전 API: 과목·문제·변형·풀이·채점·학습 현황·오류 코드가 서버 응답과 같은지, 기록 유지·삭제, 저장 실패 시 채점 유지 |
+| `src/lib/browserHistory.test.js` | 브라우저 기록 저장: 키·버전, 최대 개수, 잘못된 항목 건너뛰기, 깨진 기록 보관, 저장소 접근 불가 처리 |
 
 ## 구조
 
 ```
-shared/        프론트·서버 공용 순수 로직 (과목 프롬프트, 단위, 채점, 이미지 정책, 문제 데이터)
-server/        Express 앱(app.js), Claude 호출부(tutorService.js), 진입점(index.js)
-src/           React UI (App.jsx, components/), API 클라이언트(lib/api.js)
+shared/        프론트·서버 공용 순수 로직 (과목 프롬프트, 단위, 채점, 이미지 정책, 문제 데이터, 학습 기록 목록·요약)
+server/        Express 앱(app.js), Claude 호출부(tutorService.js), 기록 파일 저장(historyStore.js), 진입점(index.js)
+src/           React UI (App.jsx, components/)
+src/lib/       API 선택(client.js): PC 버전은 서버 API(api.js), 웹 버전은 브라우저 내 처리(localApi.js, browserHistory.js)
 ```
 
 ## 환경 변수

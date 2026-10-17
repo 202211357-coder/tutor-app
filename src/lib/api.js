@@ -101,5 +101,3 @@ export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
     },
   };
 }
-
-export const api = createApi();

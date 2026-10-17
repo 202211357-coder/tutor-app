@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createAttemptLog, isValidAttempt, MAX_ATTEMPTS } from '../shared/attemptLog.js';
+
+export { MAX_ATTEMPTS };
 
 // 채점 기록 저장소. 이 앱은 한 사람이 자기 PC에서 쓰므로 DB 대신 JSON 파일 하나에 저장한다.
-export const MAX_ATTEMPTS = 2000;
 const FILE_VERSION = 1;
 
 /**
@@ -10,46 +12,20 @@ const FILE_VERSION = 1;
  *   filePath를 생략하면 메모리에만 저장한다(테스트·임시 실행용).
  */
 export function createHistoryStore({ filePath = null, now = () => new Date(), maxAttempts = MAX_ATTEMPTS, log = console.warn } = {}) {
-  let attempts = filePath ? load(filePath, log) : [];
+  if (!filePath) return createAttemptLog({ now, maxAttempts });
 
-  function persist() {
-    if (!filePath) return;
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    // 쓰는 도중 꺼져도 기존 파일이 깨지지 않도록 임시 파일에 쓴 뒤 교체한다.
-    const tmp = `${filePath}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify({ version: FILE_VERSION, attempts }, null, 2));
-    fs.renameSync(tmp, filePath);
-  }
-
-  return {
-    /** 채점 결과 하나를 기록하고 저장된 항목을 돌려준다. */
-    record({ problemId, subjectId, seed = 0, earned, max, percent, answers }) {
-      const entry = {
-        problemId,
-        subjectId,
-        seed,
-        earned,
-        max,
-        percent,
-        answers: { ...answers },
-        at: now().toISOString(),
-      };
-      attempts.push(entry);
-      if (attempts.length > maxAttempts) attempts = attempts.slice(-maxAttempts);
-      persist();
-      return entry;
+  return createAttemptLog({
+    load: () => load(filePath, log),
+    save: (attempts) => {
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      // 쓰는 도중 꺼져도 기존 파일이 깨지지 않도록 임시 파일에 쓴 뒤 교체한다.
+      const tmp = `${filePath}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify({ version: FILE_VERSION, attempts }, null, 2));
+      fs.renameSync(tmp, filePath);
     },
-
-    /** 오래된 순서의 전체 기록 (복사본) */
-    list() {
-      return attempts.map((a) => ({ ...a, answers: { ...a.answers } }));
-    },
-
-    clear() {
-      attempts = [];
-      persist();
-    },
-  };
+    now,
+    maxAttempts,
+  });
 }
 
 function load(filePath, log) {
@@ -71,15 +47,4 @@ function load(filePath, log) {
     log(`[tutor-app] 학습 기록 파일을 읽을 수 없어 ${path.basename(backup)}로 옮기고 새로 시작합니다. (${error.message})`);
     return [];
   }
-}
-
-function isValidAttempt(a) {
-  return (
-    a &&
-    typeof a.problemId === 'string' &&
-    typeof a.subjectId === 'string' &&
-    Number.isFinite(a.earned) &&
-    Number.isFinite(a.max) &&
-    typeof a.at === 'string'
-  );
 }

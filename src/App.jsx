@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from './lib/api.js';
+import { api } from './lib/client.js';
 import { prefetchProblems } from './lib/problemCache.js';
 import { GENERAL_NOTES_KEY, lectureNote } from './lib/teacher.js';
 import HistoryView from './components/HistoryView.jsx';
@@ -16,13 +16,17 @@ export default function App() {
   const [subjectId, setSubjectId] = useState('');
   const [tab, setTab] = useState('practice');
   const [tutorEnabled, setTutorEnabled] = useState(false);
+  const [webEdition, setWebEdition] = useState(false);
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     // 설정을 못 불러오면 튜터 탭을 숨긴 채(채점만) 동작한다.
     api
       .fetchConfig()
-      .then((config) => setTutorEnabled(Boolean(config.tutorEnabled)))
+      .then((config) => {
+        setTutorEnabled(Boolean(config.tutorEnabled));
+        setWebEdition(config.edition === 'web');
+      })
       .catch(() => setTutorEnabled(false));
   }, []);
 
@@ -133,7 +137,9 @@ export default function App() {
       <main className="desk">
         {!tutorEnabled && activeTab === 'practice' && (
           <p className="notice">
-            AI 질문 기능은 서버에 ANTHROPIC_API_KEY를 설정하면 활성화됩니다. 현재는 연습 문제, 힌트, 풀이, 학습 현황을 이용할 수 있습니다.
+            {webEdition
+              ? '웹 버전입니다. 연습 문제, 힌트, 풀이, 학습 현황을 이용할 수 있고, 학습 기록은 이 기기의 브라우저에 저장됩니다.'
+              : 'AI 질문 기능은 서버에 ANTHROPIC_API_KEY를 설정하면 활성화됩니다. 현재는 연습 문제, 힌트, 풀이, 학습 현황을 이용할 수 있습니다.'}
           </p>
         )}
         {subjectViews.map((id) => (

@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api } from './client.js';
 
 // 과목별 문제 목록은 서버에서 바뀌지 않으므로 한 번 받은 결과(Promise)를 재사용한다.
 // 앱 시작 시 모든 과목을 미리 받아 두면, 처음 여는 과목도 로딩 화면 없이 바로 보인다.

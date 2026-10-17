@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api.js';
+import { api } from '../lib/client.js';
 
 function formatTime(iso) {
   const d = new Date(iso);

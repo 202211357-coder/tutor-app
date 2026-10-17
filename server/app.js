@@ -7,7 +7,7 @@ import { detectImageType, IMAGE_ERROR, MAX_IMAGE_BYTES, validateImageMeta } from
 import { getProblemInstance, getSolution, isValidSeed, listPublicProblems, PROBLEMS, toPublicProblem } from '../shared/problems.js';
 import { DEFAULT_MODE, SUBJECTS, UnknownModeError, UnknownSubjectError } from '../shared/subjects.js';
 import { createHistoryStore } from './historyStore.js';
-import { summarizeHistory } from './historySummary.js';
+import { summarizeHistory } from '../shared/historySummary.js';
 import { TutorServiceError } from './tutorService.js';
 
 export const MAX_QUESTION_LENGTH = 4000;

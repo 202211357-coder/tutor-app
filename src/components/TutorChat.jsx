@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../lib/api.js';
+import { api } from '../lib/client.js';
 import ImageUpload from './ImageUpload.jsx';
 
 const MODE_OPTIONS = [

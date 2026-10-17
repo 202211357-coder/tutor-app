@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../lib/api.js';
+import { api } from '../lib/client.js';
 import { getProblems, peekProblems } from '../lib/problemCache.js';
 import { penMark, teacherComment } from '../lib/teacher.js';
 import { fetchDifferentVariant, rememberRecent } from '../lib/variants.js';
@@ -183,7 +183,10 @@ function ProblemCard({ number, baseProblem, renumber, resetToken, bestPercent, o
               {result.earned}
               <small>/{result.max}</small>
             </span>
-            <p className="teacher-note">{teacherComment(result.percent)}</p>
+            <p className="teacher-note">
+              {teacherComment(result.percent)}
+              {result.recorded === false && <small className="record-warning">이번 채점은 학습 현황에 기록되지 않았습니다.</small>}
+            </p>
           </div>
         )}
 

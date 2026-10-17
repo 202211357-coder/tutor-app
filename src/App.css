@@ -532,6 +532,14 @@ button:disabled {
   color: var(--red-pen);
 }
 
+.record-warning {
+  display: block;
+  margin-top: 2px;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 /* 포스트잇 힌트 */
 .postit {
   max-width: 560px;
