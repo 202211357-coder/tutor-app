@@ -173,6 +173,21 @@ describe('기타 API', () => {
     await createApi(fetchImpl).gradeAnswers('p1', { '(a)': '5 kN' });
     const [, options] = fetchImpl.mock.calls[0];
     expect(options.headers['Content-Type']).toBe('application/json');
-    expect(JSON.parse(options.body)).toEqual({ problemId: 'p1', answers: { '(a)': '5 kN' } });
+    expect(JSON.parse(options.body)).toEqual({ problemId: 'p1', answers: { '(a)': '5 kN' }, seed: 0 });
+  });
+
+  it('변형 문제: gradeAnswers·fetchSolution·fetchProblemVariant에 seed를 넘긴다', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, {}));
+    const client = createApi(fetchImpl);
+    await client.gradeAnswers('p1', {}, 42);
+    await client.fetchSolution('p1', 42);
+    await client.fetchSolution('p1');
+    await client.fetchProblemVariant('p1', 42);
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body).seed).toBe(42);
+    expect(fetchImpl.mock.calls.slice(1).map((c) => c[0])).toEqual([
+      '/api/problems/p1/solution?seed=42',
+      '/api/problems/p1/solution',
+      '/api/problems/p1?seed=42',
+    ]);
   });
 });

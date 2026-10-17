@@ -57,7 +57,11 @@ export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
 
     fetchProblems: (subjectId) => request(`/api/problems?subject=${encodeURIComponent(subjectId)}`),
 
-    fetchSolution: (problemId) => request(`/api/problems/${encodeURIComponent(problemId)}/solution`),
+    fetchProblemVariant: (problemId, seed) =>
+      request(`/api/problems/${encodeURIComponent(problemId)}?seed=${encodeURIComponent(seed)}`),
+
+    fetchSolution: (problemId, seed = 0) =>
+      request(`/api/problems/${encodeURIComponent(problemId)}/solution${seed ? `?seed=${encodeURIComponent(seed)}` : ''}`),
 
     fetchHistory: () => request('/api/history'),
 
@@ -71,11 +75,11 @@ export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
       if (!response.ok) throw fallbackError(response.status);
     },
 
-    gradeAnswers: (problemId, answers) =>
+    gradeAnswers: (problemId, answers, seed = 0) =>
       request('/api/grade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ problemId, answers }),
+        body: JSON.stringify({ problemId, answers, seed }),
       }),
 
     /**

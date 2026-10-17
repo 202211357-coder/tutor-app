@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_IMAGE_BYTES } from '../shared/imagePolicy.js';
-import { PROBLEMS } from '../shared/problems.js';
+import { getProblemInstance, PROBLEMS } from '../shared/problems.js';
 import { SUBJECTS, UnknownModeError, UnknownSubjectError } from '../shared/subjects.js';
 import { createApp, MAX_QUESTION_LENGTH } from './app.js';
 import { createHistoryStore } from './historyStore.js';
@@ -62,8 +62,8 @@ describe('GET /api/problems/:id/solution', () => {
     expect(res.body.problemId).toBe('statics-cantilever');
     expect(res.body.steps.length).toBeGreaterThan(0);
     expect(res.body.answers).toEqual([
-      { label: '(a)', value: 3, unit: 'kN' },
-      { label: '(b)', value: 6, unit: 'kN·m' },
+      { label: '(a)', value: 3, unit: 'kN', display: '3' },
+      { label: '(b)', value: 6, unit: 'kN·m', display: '6' },
     ]);
   });
 
@@ -75,6 +75,57 @@ describe('GET /api/problems/:id/solution', () => {
   it('문제 목록에는 힌트만 있고 풀이는 없다', async () => {
     const res = await request(app).get('/api/problems?subject=dynamics').expect(200);
     expect(res.body.every((p) => p.hints.length > 0 && !('solution' in p))).toBe(true);
+  });
+});
+
+describe('변형 문제 (seed)', () => {
+  const seed = 12345;
+  const variant = getProblemInstance('statics-cantilever', seed);
+  const correctAnswers = Object.fromEntries(variant.parts.map((p) => [p.label, `${p.answer.value} ${p.answer.unit}`]));
+
+  it('GET /api/problems/:id?seed= → 숫자가 바뀐 문제 (정답·풀이 없음)', async () => {
+    const res = await request(app).get(`/api/problems/statics-cantilever?seed=${seed}`).expect(200);
+    expect(res.body).toMatchObject({ id: 'statics-cantilever', seed, statement: variant.statement });
+    expect(JSON.stringify(res.body)).not.toContain('"answer"');
+    expect(JSON.stringify(res.body)).not.toContain('"solution"');
+  });
+
+  it('seed를 넘겨 채점하면 그 변형 문제의 정답으로 채점한다', async () => {
+    const res = await request(app).post('/api/grade').send({ problemId: 'statics-cantilever', seed, answers: correctAnswers }).expect(200);
+    expect(res.body.earned).toBe(res.body.max);
+    // 같은 답을 기본 문제(seed 생략)로 채점하면 만점이 아니다
+    const base = await request(app).post('/api/grade').send({ problemId: 'statics-cantilever', answers: correctAnswers }).expect(200);
+    expect(base.body.earned).toBeLessThan(base.body.max);
+  });
+
+  it('풀이도 seed에 맞는 숫자로 돌려준다', async () => {
+    const res = await request(app).get(`/api/problems/statics-cantilever/solution?seed=${seed}`).expect(200);
+    expect(res.body.seed).toBe(seed);
+    expect(res.body.answers.map((a) => a.value)).toEqual(variant.parts.map((p) => p.answer.value));
+  });
+
+  it('학습 기록에 seed가 남고, 같은 문제 유형으로 집계된다', async () => {
+    const historyStore = createHistoryStore();
+    const appWithHistory = createApp({ tutorService, historyStore });
+    await request(appWithHistory).post('/api/grade').send({ problemId: 'statics-cantilever', seed, answers: correctAnswers });
+    expect(historyStore.list()[0]).toMatchObject({ problemId: 'statics-cantilever', seed, percent: 100 });
+    const summary = await request(appWithHistory).get('/api/history');
+    expect(summary.body.bestByProblem['statics-cantilever']).toBe(100);
+  });
+
+  it.each(['-1', '1.5', 'abc', String(2 ** 31)])('잘못된 seed %j → 400 BAD_SEED', async (bad) => {
+    const res = await request(app).get(`/api/problems/statics-cantilever?seed=${bad}`).expect(400);
+    expect(res.body.code).toBe('BAD_SEED');
+    await request(app).get(`/api/problems/statics-cantilever/solution?seed=${bad}`).expect(400);
+  });
+
+  it('채점 요청의 seed가 숫자가 아니면 400', async () => {
+    const res = await request(app).post('/api/grade').send({ problemId: 'statics-cantilever', seed: 'x', answers: {} }).expect(400);
+    expect(res.body.code).toBe('BAD_SEED');
+  });
+
+  it('없는 문제 → 404', async () => {
+    await request(app).get('/api/problems/nope?seed=3').expect(404);
   });
 });
 

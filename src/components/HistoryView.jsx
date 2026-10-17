@@ -40,14 +40,16 @@ export default function HistoryView({ onOpenSubject }) {
   if (!summary) return <p>불러오는 중…</p>;
   if (summary.totalAttempts === 0) {
     return (
-      <section className="history">
-        <p>아직 기록이 없습니다. 연습 문제를 채점하면 여기에 자동으로 쌓입니다.</p>
+      <section className="history report-card">
+        <h2 className="report-title">성적표</h2>
+        <p>아직 기록이 없습니다. 연습 문제를 채점받으면 여기에 자동으로 쌓여요.</p>
       </section>
     );
   }
 
   return (
-    <section className="history">
+    <section className="history report-card">
+      <h2 className="report-title">성적표</h2>
       <h3>과목별 진도</h3>
       <table className="progress-table">
         <thead>
@@ -73,7 +75,7 @@ export default function HistoryView({ onOpenSubject }) {
                 {s.solved} / {s.total}
               </td>
               <td>{s.tried}</td>
-              <td>{s.averageBest === null ? '–' : `${s.averageBest}%`}</td>
+              <td>{s.averageBest === null ? '–' : `${s.averageBest}점`}</td>
             </tr>
           ))}
         </tbody>
@@ -81,7 +83,7 @@ export default function HistoryView({ onOpenSubject }) {
 
       <h3>다시 풀어 볼 문제</h3>
       {summary.toReview.length === 0 ? (
-        <p className="notice">풀어 본 문제를 모두 만점으로 통과했습니다.</p>
+        <p className="teacher-note">풀어 본 문제를 모두 만점으로 통과했어요. 참 잘했어요!</p>
       ) : (
         <ul className="review-list">
           {summary.toReview.map((r) => (
@@ -91,7 +93,7 @@ export default function HistoryView({ onOpenSubject }) {
               </button>
               {r.topic && <span className="topic-chip">{r.topic}</span>}
               <span className="muted">
-                최고 {r.bestPercent}% · {r.attempts}회 시도
+                최고 {r.bestPercent}점 · {r.attempts}회 시도
               </span>
             </li>
           ))}
@@ -111,7 +113,7 @@ export default function HistoryView({ onOpenSubject }) {
       </ul>
 
       <div className="study-actions">
-        <button type="button" onClick={handleClear}>
+        <button type="button" className="ghost-button" onClick={handleClear}>
           기록 전체 삭제
         </button>
       </div>

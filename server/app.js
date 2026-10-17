@@ -4,7 +4,7 @@ import express from 'express';
 import multer from 'multer';
 import { gradeProblem } from '../shared/grading.js';
 import { detectImageType, IMAGE_ERROR, MAX_IMAGE_BYTES, validateImageMeta } from '../shared/imagePolicy.js';
-import { findProblem, getSolution, listPublicProblems, PROBLEMS } from '../shared/problems.js';
+import { getProblemInstance, getSolution, isValidSeed, listPublicProblems, PROBLEMS, toPublicProblem } from '../shared/problems.js';
 import { DEFAULT_MODE, SUBJECTS, UnknownModeError, UnknownSubjectError } from '../shared/subjects.js';
 import { createHistoryStore } from './historyStore.js';
 import { summarizeHistory } from './historySummary.js';
@@ -34,6 +34,13 @@ function uploadImage(req, res, next) {
     }
     return next(err);
   });
+}
+
+/** seed 파라미터: 생략하면 0(기본 숫자). 0 이상 정수만 허용한다. 잘못되면 null. */
+function parseSeed(raw) {
+  if (raw === undefined || raw === null || raw === '') return 0;
+  const seed = typeof raw === 'number' ? raw : /^\d+$/.test(String(raw)) ? Number(raw) : NaN;
+  return isValidSeed(seed) ? seed : null;
 }
 
 function parseHistory(raw) {
@@ -68,16 +75,33 @@ export function createApp({ tutorService, historyStore = createHistoryStore(), s
     res.json(listPublicProblems(subjectId));
   });
 
+  // 문제 id와 seed로 문제를 찾는다. 오류면 응답을 보내고 null을 돌려준다.
+  function resolveProblem(res, problemId, rawSeed) {
+    const seed = parseSeed(rawSeed);
+    if (seed === null) {
+      sendError(res, 400, 'BAD_SEED', 'seed는 0 이상의 정수여야 합니다.');
+      return null;
+    }
+    const problem = typeof problemId === 'string' ? getProblemInstance(problemId, seed) : null;
+    if (!problem) sendError(res, 404, 'UNKNOWN_PROBLEM', '문제를 찾을 수 없습니다.');
+    return problem;
+  }
+
+  // 같은 문제를 다른 숫자로 (seed가 같으면 항상 같은 숫자)
+  app.get('/api/problems/:problemId', (req, res) => {
+    const problem = resolveProblem(res, req.params.problemId, req.query.seed);
+    if (problem) res.json(toPublicProblem(problem));
+  });
+
   app.get('/api/problems/:problemId/solution', (req, res) => {
-    const problem = findProblem(req.params.problemId);
-    if (!problem) return sendError(res, 404, 'UNKNOWN_PROBLEM', '문제를 찾을 수 없습니다.');
-    res.json(getSolution(problem));
+    const problem = resolveProblem(res, req.params.problemId, req.query.seed);
+    if (problem) res.json(getSolution(problem));
   });
 
   app.post('/api/grade', (req, res) => {
-    const { problemId, answers } = req.body ?? {};
-    const problem = typeof problemId === 'string' ? findProblem(problemId) : null;
-    if (!problem) return sendError(res, 404, 'UNKNOWN_PROBLEM', '문제를 찾을 수 없습니다.');
+    const { problemId, answers, seed } = req.body ?? {};
+    const problem = resolveProblem(res, problemId, seed);
+    if (!problem) return;
     if (answers !== undefined && (typeof answers !== 'object' || answers === null || Array.isArray(answers))) {
       return sendError(res, 400, 'BAD_ANSWERS', 'answers는 { 소문항: 답안 } 형태여야 합니다.');
     }
@@ -87,6 +111,7 @@ export function createApp({ tutorService, historyStore = createHistoryStore(), s
       historyStore.record({
         problemId: problem.id,
         subjectId: problem.subjectId,
+        seed: problem.seed,
         earned: result.earned,
         max: result.max,
         percent: result.percent,

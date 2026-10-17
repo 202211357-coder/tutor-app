@@ -23,10 +23,11 @@ export function createHistoryStore({ filePath = null, now = () => new Date(), ma
 
   return {
     /** 채점 결과 하나를 기록하고 저장된 항목을 돌려준다. */
-    record({ problemId, subjectId, earned, max, percent, answers }) {
+    record({ problemId, subjectId, seed = 0, earned, max, percent, answers }) {
       const entry = {
         problemId,
         subjectId,
+        seed,
         earned,
         max,
         percent,

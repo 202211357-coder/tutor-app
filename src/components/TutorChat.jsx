@@ -39,7 +39,7 @@ export default function TutorChat({ subjectId }) {
   }
 
   return (
-    <section className="tutor-chat">
+    <section className="tutor-chat sheet">
       <div className="mode-picker">
         {MODE_OPTIONS.map((m) => (
           <label key={m.id}>
@@ -52,7 +52,7 @@ export default function TutorChat({ subjectId }) {
       <ol className="messages">
         {messages.map((m, i) => (
           <li key={i} className={`message ${m.role}`}>
-            <strong>{m.role === 'user' ? '나' : '튜터'}</strong>
+            <strong>{m.role === 'user' ? '나' : '선생님'}</strong>
             {m.hasImage && <span className="badge">이미지 첨부</span>}
             <p>{m.content}</p>
             {m.truncated && <p className="notice">답변이 길어 중간에 잘렸습니다.</p>}
@@ -70,7 +70,7 @@ export default function TutorChat({ subjectId }) {
         />
         <ImageUpload file={imageFile} onChange={setImageFile} disabled={pending} />
         {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={pending || (!question.trim() && !imageFile)}>
+        <button type="submit" className="primary-button" disabled={pending || (!question.trim() && !imageFile)}>
           {pending ? '답변 생성 중…' : '질문하기'}
         </button>
       </form>

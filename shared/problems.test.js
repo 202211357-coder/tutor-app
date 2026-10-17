@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { gradeProblem } from './grading.js';
-import { findProblem, getSolution, listPublicProblems, PROBLEMS, toPublicProblem } from './problems.js';
+import {
+  createRng,
+  findProblem,
+  fmt,
+  getProblemInstance,
+  getSolution,
+  isValidSeed,
+  listPublicProblems,
+  MAX_SEED,
+  PROBLEMS,
+  toPublicProblem,
+} from './problems.js';
 import { SUBJECTS } from './subjects.js';
 import { convert } from './units.js';
 
@@ -169,8 +180,8 @@ describe('공개용 데이터', () => {
     expect(s.problemId).toBe('thermo-carnot');
     expect(s.steps.length).toBeGreaterThan(0);
     expect(s.answers).toEqual([
-      { label: '(a)', value: 0.625, unit: '' },
-      { label: '(b)', value: 625, unit: 'kJ' },
+      { label: '(a)', value: 0.625, unit: '', display: '0.625' },
+      { label: '(b)', value: 625, unit: 'kJ', display: '625' },
     ]);
   });
 
@@ -178,5 +189,199 @@ describe('공개용 데이터', () => {
     const pub = toPublicProblem(PROBLEMS[0]);
     pub.hints.push('변조');
     expect(PROBLEMS[0].hints).not.toContain('변조');
+  });
+});
+
+// ───────── 숫자 바꾸기(변형 문제) ─────────
+
+// 변형 문제의 정답을 문제 변수(params)로 독립적으로 다시 계산하는 공식.
+// problems.js의 build()와 별개로 작성해, 한쪽의 공식 실수를 다른 쪽이 잡도록 한다.
+const FORMULAS = {
+  'statics-simply-supported-beam': ({ L, P }) => ({ '(a)': P / 2, '(b)': (P * L) / 4 }),
+  'statics-cantilever': ({ L, P }) => ({ '(a)': P, '(b)': P * L }),
+  'statics-two-cables': ({ W, thA, thB }) => ({ '(a)': W / 2 / sin((thA * PI) / 180), '(b)': W / 2 / sin((thB * PI) / 180) }),
+  'statics-incline-friction': ({ m, th }) => ({
+    '(a)': m * g * sin((th * PI) / 180),
+    '(b)': m * g * cos((th * PI) / 180),
+    '(c)': Math.tan((th * PI) / 180),
+  }),
+  'statics-simple-truss': ({ s, h, P }) => {
+    // 절점 A: 수직 F_AC·sinα = R_A, 수평 F_AB = F_AC·cosα
+    const alpha = Math.atan2(h, s / 2);
+    const fac = P / 2 / sin(alpha);
+    return { '(a)': P / 2, '(b)': fac, '(c)': fac * cos(alpha) };
+  },
+  'mom-axial-rod': ({ d, L, P }) => {
+    const sigma = (P * 1e3) / (PI * (d / 2) ** 2);
+    return { '(a)': sigma, '(b)': (sigma / 200e3) * L * 1e3 };
+  },
+  'mom-torsion-shaft': ({ d, L, T }) => {
+    const r = d / 2000;
+    const J = (PI * r ** 4) / 2;
+    return { '(a)': (T * r) / J / 1e6, '(b)': (T * L) / (80e9 * J) };
+  },
+  'mom-bending-stress': ({ b, h, M }) => {
+    const I = (b * h * h * h) / 12;
+    return { '(a)': I, '(b)': (M * 1e6 * h) / 2 / I };
+  },
+  'mom-thermal-stress': ({ L, dT }) => ({ '(a)': 200e3 * 12e-6 * dT, '(b)': 12e-6 * dT * L * 1e3 }),
+  'mom-pressure-vessel': ({ D, t, p }) => ({ '(a)': (p * D * 1e3) / (2 * t), '(b)': (p * D * 1e3) / (4 * t) }),
+  'mom-euler-buckling': ({ L, d }) => {
+    const I = (PI * (d / 2000) ** 4) / 4;
+    const pcr = (PI * PI * 200e9 * I) / (L * L) / 1e3;
+    return { '(a)': pcr, '(b)': (PI * PI * 200e9 * I) / (2 * L) ** 2 / 1e3 };
+  },
+  'thermo-constant-pressure-heating': ({ m, dT }) => ({ '(a)': m * 1.005 * dT, '(b)': 1.005 * dT }),
+  'thermo-ideal-gas-tank': ({ V, P1, T1, T2 }) => ({ '(a)': (P1 * V) / (0.287 * T1), '(b)': P1 * (T2 / T1) }),
+  'thermo-carnot': ({ TH, TL, QH }) => ({ '(a)': (TH - TL) / TH, '(b)': (QH * (TH - TL)) / TH }),
+  'thermo-adiabatic-compression': ({ T1, ratio }) => {
+    const t2 = T1 * Math.exp((0.4 / 1.4) * Math.log(ratio));
+    return { '(a)': t2, '(b)': 0.718 * (t2 - T1) };
+  },
+  'thermo-otto-cycle': ({ ra, rb }) => ({ '(a)': 1 - 1 / ra ** 0.4, '(b)': 1 - 1 / rb ** 0.4 }),
+  'fluid-pipe-flow-rate': ({ D, V }) => ({ '(a)': PI * (D / 2) ** 2 * V, '(b)': 1000 * PI * (D / 2) ** 2 * V }),
+  'fluid-hydrostatic-pressure': ({ h }) => ({ '(a)': 9.81 * h, '(b)': 101.325 + 9.81 * h }),
+  'fluid-pipe-contraction': ({ D1, D2, V1 }) => {
+    const v2 = (V1 * D1 * D1) / (D2 * D2);
+    return { '(a)': v2, '(b)': (500 * (v2 * v2 - V1 * V1)) / 1000, '(c)': V1 * D1 * 1e6 };
+  },
+  'fluid-pipe-friction-loss': ({ L, D, V, f }) => {
+    const dpPa = (f * (L / D) * 1000 * V * V) / 2;
+    return { '(a)': dpPa / (1000 * g), '(b)': dpPa / 1000 };
+  },
+  'fluid-buoyancy': ({ a, b, c, rho }) => ({ '(a)': rho * a * b * c * g, '(b)': (rho * a * b * c) / 1000 / (a * b) }),
+  'dynamics-spring-mass': ({ m, k }) => ({
+    '(a)': sqrt(k / m),
+    '(b)': sqrt(k / m) / (2 * PI),
+    '(c)': 2 * PI * sqrt(m / k),
+  }),
+  'dynamics-free-fall': ({ h }) => ({ '(a)': sqrt(2 * g * h), '(b)': sqrt((2 * h) / g) }),
+  'dynamics-damped-vibration': ({ m, k, c }) => {
+    const zeta = c / (2 * sqrt(k * m));
+    return { '(a)': zeta, '(b)': sqrt(k / m - (c / (2 * m)) ** 2) };
+  },
+  'dynamics-curve-friction': ({ r, kmh }) => ({ '(a)': (kmh / 3.6) ** 2 / r, '(b)': (kmh / 3.6) ** 2 / r / g }),
+  'dynamics-flywheel': ({ m, R, n }) => {
+    const w = (2 * PI * n) / 60;
+    return { '(a)': (m * R * R) / 2, '(b)': (m * R * R * w * w) / 4 / 1000 };
+  },
+};
+
+/** 화면에 보이는 "4.167 × 10⁶"을 학생이 키보드로 치는 형태 "4.167×10^6"으로 바꾼다. */
+function asTyped(display) {
+  const digits = { '⁻': '-', '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
+  return display.replace(/ × 10([⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+)/, (_, sup) => `×10^${[...sup].map((c) => digits[c]).join('')}`);
+}
+
+// seed 1~40과 큰 seed 몇 개를 고정해 매번 같은 변형을 검사한다.
+const SEEDS = [...Array.from({ length: 40 }, (_, i) => i + 1), 123456, 987654321, MAX_SEED];
+
+describe('변형 문제 (숫자 바꾸기)', () => {
+  it('공식표가 모든 문제를 다룬다', () => {
+    expect(Object.keys(FORMULAS).sort()).toEqual(PROBLEMS.map((p) => p.id).sort());
+  });
+
+  it.each(PROBLEMS.map((p) => [p.id]))('%s: 여러 seed에서 정답이 독립 공식과 일치한다', (id) => {
+    for (const seed of SEEDS) {
+      const inst = getProblemInstance(id, seed);
+      const expected = FORMULAS[id](inst.params);
+      for (const p of inst.parts) {
+        const rel = Math.abs(p.answer.value - expected[p.label]) / Math.abs(expected[p.label]);
+        expect(rel, `${id} seed=${seed} ${p.label}`).toBeLessThan(1e-9);
+      }
+    }
+  });
+
+  it.each(PROBLEMS.map((p) => [p.id]))('%s: 기본 숫자도 같은 공식을 만족한다', (id) => {
+    const inst = findProblem(id);
+    const expected = FORMULAS[id](inst.params);
+    for (const p of inst.parts) expect(Math.abs(p.answer.value - expected[p.label]) / Math.abs(expected[p.label])).toBeLessThan(1e-9);
+  });
+
+  it.each(PROBLEMS.map((p) => [p.id]))('%s: 변형 문제의 숫자는 기본 문제와 다르고, 문제 문장에 반영된다', (id) => {
+    const base = findProblem(id);
+    let differentStatements = 0;
+    for (const seed of SEEDS.slice(0, 10)) {
+      const inst = getProblemInstance(id, seed);
+      expect(inst.params).not.toEqual(base.params);
+      if (inst.statement !== base.statement || inst.parts.some((p, i) => p.prompt !== base.parts[i].prompt)) differentStatements += 1;
+    }
+    expect(differentStatements).toBe(10);
+  });
+
+  it('같은 seed는 항상 같은 문제를 만든다 (채점 시 서버가 다시 만들 수 있음)', () => {
+    for (const { id } of PROBLEMS) {
+      expect(getProblemInstance(id, 777)).toEqual(getProblemInstance(id, 777));
+    }
+  });
+
+  it('seed가 다르면 대체로 다른 숫자가 나온다', () => {
+    const variants = new Set(SEEDS.map((seed) => JSON.stringify(getProblemInstance('mom-axial-rod', seed).params)));
+    expect(variants.size).toBeGreaterThan(5);
+  });
+
+  it.each([
+    ['mom-axial-rod', (i) => i.parts[0].answer.value <= 250],
+    ['mom-torsion-shaft', (i) => i.parts[0].answer.value <= 150],
+    ['mom-bending-stress', (i) => i.parts[1].answer.value <= 250],
+    ['mom-pressure-vessel', (i) => (i.params.D * 1000) / i.params.t >= 20 && i.parts[0].answer.value <= 250],
+    ['statics-incline-friction', (i) => i.parts[2].answer.value < 0.7],
+    ['dynamics-curve-friction', (i) => i.parts[1].answer.value <= 1],
+    ['dynamics-damped-vibration', (i) => i.parts[0].answer.value < 1],
+  ])('%s: 변형 문제도 물리적 가정(탄성 범위·박육·정지·부족감쇠 등)을 지킨다', (id, check) => {
+    for (const seed of SEEDS) expect(check(getProblemInstance(id, seed)), `seed=${seed}`).toBe(true);
+  });
+
+  it.each(PROBLEMS.map((p) => [p.id]))('%s: 풀이에 표시된 정답(유효숫자 4자리)을 그대로 써도 만점', (id) => {
+    for (const seed of [0, ...SEEDS.slice(0, 10)]) {
+      const inst = getProblemInstance(id, seed);
+      const answers = Object.fromEntries(getSolution(inst).answers.map((a) => [a.label, `${asTyped(a.display)} ${a.unit}`]));
+      const r = gradeProblem(inst, answers);
+      expect(r.earned, `${id} seed=${seed} ${JSON.stringify(answers)}`).toBe(r.max);
+    }
+  });
+
+  it.each(PROBLEMS.map((p) => [p.id]))('%s: 변형 문제의 힌트도 최종 값을 노출하지 않는다', (id) => {
+    for (const seed of SEEDS.slice(0, 10)) {
+      const inst = getProblemInstance(id, seed);
+      const text = inst.hints.join('\n');
+      for (const p of inst.parts.filter((x) => x.answer.unit)) expect(text).not.toContain(`${fmt(p.answer.value)} ${p.answer.unit}`);
+    }
+  });
+
+  it('잘못된 seed나 없는 문제는 null', () => {
+    expect(getProblemInstance('mom-axial-rod', -1)).toBeNull();
+    expect(getProblemInstance('mom-axial-rod', 1.5)).toBeNull();
+    expect(getProblemInstance('mom-axial-rod', MAX_SEED + 1)).toBeNull();
+    expect(getProblemInstance('nope', 3)).toBeNull();
+  });
+
+  it('seed 0은 기본 문제와 같다', () => {
+    expect(getProblemInstance('statics-cantilever', 0)).toBe(findProblem('statics-cantilever'));
+  });
+
+  it('isValidSeed / createRng', () => {
+    expect([0, 1, MAX_SEED].every(isValidSeed)).toBe(true);
+    expect([-1, 0.5, '3', null, MAX_SEED + 1].some(isValidSeed)).toBe(false);
+    const a = createRng(42);
+    const b = createRng(42);
+    const seq = [a(), a(), a()];
+    expect([b(), b(), b()]).toEqual(seq);
+    expect(seq.every((x) => x >= 0 && x < 1)).toBe(true);
+  });
+});
+
+describe('fmt (표시용 숫자)', () => {
+  it.each([
+    [0, '0'],
+    [5, '5'],
+    [99.949304, '99.95'],
+    [0.0157079, '0.01571'],
+    [4166666.67, '4.167 × 10⁶'],
+    [2.5132741e-7, '2.513 × 10⁻⁷'],
+    [9.99995e6, '1 × 10⁷'],
+    [-1234.5, '-1235'],
+  ])('%d → %s', (x, expected) => {
+    expect(fmt(x)).toBe(expected);
   });
 });
