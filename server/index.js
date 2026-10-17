@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
 import { createApp } from './app.js';
+import { createHistoryStore } from './historyStore.js';
 import { openBrowser } from './openBrowser.js';
 import { createTutorService, DEFAULT_MODEL } from './tutorService.js';
 
@@ -25,6 +26,8 @@ if (process.env.ANTHROPIC_API_KEY) {
 
 const app = createApp({
   tutorService: createTutorService({ client, model }),
+  // 학습 기록은 프로젝트 폴더의 data/history.json에 저장한다 (git에는 올라가지 않음).
+  historyStore: createHistoryStore({ filePath: path.join(here, '..', 'data', 'history.json') }),
   staticDir: path.join(here, '..', 'dist'),
 });
 

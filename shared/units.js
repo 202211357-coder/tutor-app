@@ -70,6 +70,10 @@ const UNIT_TABLE = {
   m4: { dim: 'second_moment', factor: 1 },
   cm4: { dim: 'second_moment', factor: 1e-8 },
   mm4: { dim: 'second_moment', factor: 1e-12 },
+  // 절대온도. °C는 영점이 달라(아핀 변환) 배율 환산으로 다룰 수 없으므로 지원하지 않는다.
+  K: { dim: 'temperature', factor: 1 },
+  // 질량 관성모멘트
+  'kg.m2': { dim: 'mass_moment', factor: 1 },
   // 무차원 비율 (효율 등). 단위 없는 답안도 이 차원으로 취급한다.
   '%': { dim: 'ratio', factor: 0.01 },
 };

@@ -1,0 +1,120 @@
+import { useEffect, useState } from 'react';
+import { api } from '../lib/api.js';
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * 학습 기록: 과목별 진도, 다시 풀어 볼 문제, 최근 채점.
+ * @param {{onOpenSubject: (subjectId: string) => void}} props
+ */
+export default function HistoryView({ onOpenSubject }) {
+  const [summary, setSummary] = useState(null);
+  const [error, setError] = useState('');
+
+  function load() {
+    setError('');
+    api
+      .fetchHistory()
+      .then(setSummary)
+      .catch((err) => setError(err.message));
+  }
+
+  useEffect(load, []);
+
+  async function handleClear() {
+    if (!window.confirm('모든 학습 기록을 지울까요? 되돌릴 수 없습니다.')) return;
+    try {
+      await api.clearHistory();
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  if (error) return <p className="error">학습 기록을 불러오지 못했습니다: {error}</p>;
+  if (!summary) return <p>불러오는 중…</p>;
+  if (summary.totalAttempts === 0) {
+    return (
+      <section className="history">
+        <p>아직 기록이 없습니다. 연습 문제를 채점하면 여기에 자동으로 쌓입니다.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="history">
+      <h3>과목별 진도</h3>
+      <table className="progress-table">
+        <thead>
+          <tr>
+            <th>과목</th>
+            <th>만점 / 전체</th>
+            <th>시도한 문제</th>
+            <th>평균 최고 점수</th>
+          </tr>
+        </thead>
+        <tbody>
+          {summary.bySubject.map((s) => (
+            <tr key={s.subjectId}>
+              <td>
+                <button type="button" className="link" onClick={() => onOpenSubject(s.subjectId)}>
+                  {s.name}
+                </button>
+              </td>
+              <td>
+                <span className="bar" aria-hidden="true">
+                  <span style={{ width: `${s.total ? (s.solved / s.total) * 100 : 0}%` }} />
+                </span>
+                {s.solved} / {s.total}
+              </td>
+              <td>{s.tried}</td>
+              <td>{s.averageBest === null ? '–' : `${s.averageBest}%`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h3>다시 풀어 볼 문제</h3>
+      {summary.toReview.length === 0 ? (
+        <p className="notice">풀어 본 문제를 모두 만점으로 통과했습니다.</p>
+      ) : (
+        <ul className="review-list">
+          {summary.toReview.map((r) => (
+            <li key={r.problemId}>
+              <button type="button" className="link" onClick={() => onOpenSubject(r.subjectId)}>
+                {r.title}
+              </button>
+              {r.topic && <span className="topic-chip">{r.topic}</span>}
+              <span className="muted">
+                최고 {r.bestPercent}% · {r.attempts}회 시도
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h3>최근 채점</h3>
+      <ul className="recent-list">
+        {summary.recent.map((r, i) => (
+          <li key={`${r.at}-${i}`}>
+            <span className="muted">{formatTime(r.at)}</span> {r.title} —{' '}
+            <strong>
+              {r.earned}/{r.max}점 ({r.percent}%)
+            </strong>
+          </li>
+        ))}
+      </ul>
+
+      <div className="study-actions">
+        <button type="button" onClick={handleClear}>
+          기록 전체 삭제
+        </button>
+      </div>
+    </section>
+  );
+}

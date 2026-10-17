@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from './lib/api.js';
+import HistoryView from './components/HistoryView.jsx';
 import ProblemSolver from './components/ProblemSolver.jsx';
 import TutorChat from './components/TutorChat.jsx';
 
 const TUTOR_TAB = { id: 'tutor', label: '튜터에게 질문' };
 const PRACTICE_TAB = { id: 'practice', label: '연습 문제' };
+const HISTORY_TAB = { id: 'history', label: '학습 기록' };
 
 export default function App() {
   const [subjects, setSubjects] = useState([]);
@@ -32,7 +34,7 @@ export default function App() {
   }, []);
 
   const subject = subjects.find((s) => s.id === subjectId);
-  const tabs = tutorEnabled ? [PRACTICE_TAB, TUTOR_TAB] : [PRACTICE_TAB];
+  const tabs = tutorEnabled ? [PRACTICE_TAB, HISTORY_TAB, TUTOR_TAB] : [PRACTICE_TAB, HISTORY_TAB];
   const activeTab = tabs.some((t) => t.id === tab) ? tab : PRACTICE_TAB.id;
 
   return (
@@ -67,6 +69,14 @@ export default function App() {
 
       <main>
         {subjectId && activeTab === 'practice' && <ProblemSolver key={subjectId} subjectId={subjectId} />}
+        {activeTab === 'history' && (
+          <HistoryView
+            onOpenSubject={(id) => {
+              setSubjectId(id);
+              setTab(PRACTICE_TAB.id);
+            }}
+          />
+        )}
         {subjectId && activeTab === 'tutor' && <TutorChat key={subjectId} subjectId={subjectId} />}
       </main>
     </div>

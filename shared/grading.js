@@ -72,7 +72,11 @@ export function gradePart(rawAnswer, part) {
   } else {
     const answerUnit = parsed.unitText === '' ? RATIO_UNIT : lookupUnit(parsed.unitText);
     if (!answerUnit) {
-      return result(GRADE_STATUS.UNKNOWN_UNIT, 0, maxPoints, `인식할 수 없는 단위입니다: "${parsed.unitText}"`);
+      const feedback =
+        expectedUnit.dim === 'temperature'
+          ? `온도는 절대온도(K)로 쓰세요. ("${parsed.unitText}"는 지원하지 않습니다)`
+          : `인식할 수 없는 단위입니다: "${parsed.unitText}"`;
+      return result(GRADE_STATUS.UNKNOWN_UNIT, 0, maxPoints, feedback);
     }
     if (answerUnit.dim !== expectedUnit.dim) {
       return result(

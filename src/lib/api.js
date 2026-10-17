@@ -9,6 +9,9 @@ export class ApiError extends Error {
   }
 }
 
+// 서버는 이 PC에서 돌고 있으므로, 연결 실패는 인터넷이 아니라 앱 서버(검은 창)가 꺼졌다는 뜻이다.
+const NETWORK_MESSAGE = '앱 서버에 연결할 수 없습니다. start-tutor.bat 검은 창이 열려 있는지 확인하고, 닫혔다면 다시 실행하세요.';
+
 // 서버가 JSON 오류 본문을 주지 못했을 때(프록시 오류 등) 상태 코드로 메시지를 정한다.
 function fallbackError(status) {
   if (status === 413) return new ApiError('TOO_LARGE', '파일이 너무 커서 업로드하지 못했습니다.', status);
@@ -27,8 +30,7 @@ export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
     try {
       response = await fetchImpl(path, options);
     } catch {
-      // 서버는 이 PC에서 돌고 있으므로, 인터넷이 아니라 앱 서버(검은 창)가 꺼졌는지를 안내한다.
-      throw new ApiError('NETWORK', '앱 서버에 연결할 수 없습니다. start-tutor.bat 검은 창이 열려 있는지 확인하고, 닫혔다면 다시 실행하세요.');
+      throw new ApiError('NETWORK', NETWORK_MESSAGE);
     }
 
     let body = null;
@@ -56,6 +58,18 @@ export function createApi(fetchImpl = (...args) => globalThis.fetch(...args)) {
     fetchProblems: (subjectId) => request(`/api/problems?subject=${encodeURIComponent(subjectId)}`),
 
     fetchSolution: (problemId) => request(`/api/problems/${encodeURIComponent(problemId)}/solution`),
+
+    fetchHistory: () => request('/api/history'),
+
+    clearHistory: async () => {
+      let response;
+      try {
+        response = await fetchImpl('/api/history', { method: 'DELETE' });
+      } catch {
+        throw new ApiError('NETWORK', NETWORK_MESSAGE);
+      }
+      if (!response.ok) throw fallbackError(response.status);
+    },
 
     gradeAnswers: (problemId, answers) =>
       request('/api/grade', {

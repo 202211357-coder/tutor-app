@@ -4,6 +4,7 @@ import { MAX_IMAGE_BYTES } from '../shared/imagePolicy.js';
 import { PROBLEMS } from '../shared/problems.js';
 import { SUBJECTS, UnknownModeError, UnknownSubjectError } from '../shared/subjects.js';
 import { createApp, MAX_QUESTION_LENGTH } from './app.js';
+import { createHistoryStore } from './historyStore.js';
 import { TutorServiceError } from './tutorService.js';
 
 const PNG_HEADER = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]);
@@ -74,6 +75,57 @@ describe('GET /api/problems/:id/solution', () => {
   it('문제 목록에는 힌트만 있고 풀이는 없다', async () => {
     const res = await request(app).get('/api/problems?subject=dynamics').expect(200);
     expect(res.body.every((p) => p.hints.length > 0 && !('solution' in p))).toBe(true);
+  });
+});
+
+describe('학습 기록 API', () => {
+  it('채점하면 기록이 쌓이고 /api/history 요약에 반영된다', async () => {
+    const historyStore = createHistoryStore();
+    const appWithHistory = createApp({ tutorService, historyStore });
+    const res = await request(appWithHistory)
+      .post('/api/grade')
+      .send({ problemId: 'statics-cantilever', answers: { '(a)': '3 kN', '(b)': '6.2 kN·m' } })
+      .expect(200);
+    expect(res.body.recorded).toBe(true);
+    expect(historyStore.list()).toHaveLength(1);
+    expect(historyStore.list()[0]).toMatchObject({ problemId: 'statics-cantilever', subjectId: 'statics', earned: 7, percent: 70 });
+
+    const summary = await request(appWithHistory).get('/api/history').expect(200);
+    expect(summary.body.totalAttempts).toBe(1);
+    expect(summary.body.bestByProblem).toEqual({ 'statics-cantilever': 70 });
+    expect(summary.body.toReview.map((r) => r.problemId)).toEqual(['statics-cantilever']);
+    expect(summary.body.bySubject.find((x) => x.subjectId === 'statics')).toMatchObject({ tried: 1, solved: 0 });
+  });
+
+  it('없는 문제를 채점하려 하면 기록하지 않는다', async () => {
+    const historyStore = createHistoryStore();
+    await request(createApp({ tutorService, historyStore })).post('/api/grade').send({ problemId: 'nope' }).expect(404);
+    expect(historyStore.list()).toEqual([]);
+  });
+
+  it('DELETE /api/history → 204, 기록이 비워진다', async () => {
+    const historyStore = createHistoryStore();
+    const appWithHistory = createApp({ tutorService, historyStore });
+    await request(appWithHistory).post('/api/grade').send({ problemId: 'statics-cantilever', answers: {} });
+    await request(appWithHistory).delete('/api/history').expect(204);
+    expect((await request(appWithHistory).get('/api/history')).body.totalAttempts).toBe(0);
+  });
+
+  it('기록 저장이 실패해도 채점 결과는 돌려준다 (recorded: false)', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const brokenStore = {
+      record: () => {
+        throw new Error('disk full');
+      },
+      list: () => [],
+      clear: () => {},
+    };
+    const res = await request(createApp({ tutorService, historyStore: brokenStore }))
+      .post('/api/grade')
+      .send({ problemId: 'statics-cantilever', answers: { '(a)': '3 kN', '(b)': '6 kN·m' } })
+      .expect(200);
+    expect(res.body).toMatchObject({ earned: 10, max: 10, recorded: false });
+    spy.mockRestore();
   });
 });
 

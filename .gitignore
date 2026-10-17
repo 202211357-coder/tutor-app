@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# 개인 학습 기록
+data/
 .env
 .env.*
 !.env.example

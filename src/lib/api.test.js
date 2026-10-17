@@ -143,6 +143,31 @@ describe('기타 API', () => {
     expect(fetchImpl.mock.calls[0][0]).toBe('/api/config');
   });
 
+  it('fetchHistory는 /api/history를 호출한다', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { totalAttempts: 0 }));
+    expect(await createApi(fetchImpl).fetchHistory()).toEqual({ totalAttempts: 0 });
+    expect(fetchImpl.mock.calls[0][0]).toBe('/api/history');
+  });
+
+  it('clearHistory는 DELETE를 보내고 204(본문 없음)를 성공으로 처리한다', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
+    await expect(createApi(fetchImpl).clearHistory()).resolves.toBeUndefined();
+    expect(fetchImpl).toHaveBeenCalledWith('/api/history', { method: 'DELETE' });
+  });
+
+  it('clearHistory 실패: 서버 오류 → SERVER_ERROR, 연결 실패 → NETWORK', async () => {
+    await expect(createApi(vi.fn(async () => new Response('x', { status: 500 }))).clearHistory()).rejects.toMatchObject({
+      code: 'SERVER_ERROR',
+    });
+    await expect(
+      createApi(
+        vi.fn(async () => {
+          throw new TypeError('Failed to fetch');
+        }),
+      ).clearHistory(),
+    ).rejects.toMatchObject({ code: 'NETWORK' });
+  });
+
   it('gradeAnswers는 JSON 본문으로 보낸다', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(200, { earned: 1 }));
     await createApi(fetchImpl).gradeAnswers('p1', { '(a)': '5 kN' });

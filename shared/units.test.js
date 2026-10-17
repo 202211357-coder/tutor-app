@@ -92,6 +92,9 @@ describe('convert', () => {
     expect(convert(4.1667e6, 'mm⁴', 'm⁴')).toBeCloseTo(4.1667e-6, 15);
     expect(convert(1, 'cm4', 'mm4')).toBeCloseTo(1e4, 9);
     expect(convert(62.5, '%', '%')).toBe(62.5);
+    expect(lookupUnit('kg·m²')).toMatchObject({ dim: 'mass_moment', factor: 1 });
+    expect(lookupUnit('K')).toMatchObject({ dim: 'temperature' });
+    expect(lookupUnit('°C')).toBeNull();
   });
 
   it('차원이 다르면 예외', () => {

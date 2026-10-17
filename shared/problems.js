@@ -8,6 +8,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'statics-simply-supported-beam',
     subjectId: 'statics',
+    topic: '보의 반력',
     title: '단순지지보의 반력과 최대 굽힘모멘트',
     statement:
       '길이 L = 4 m인 단순지지보 AB의 중앙에 집중하중 P = 10 kN이 아래로 작용한다. 보의 자중은 무시한다.',
@@ -30,6 +31,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'statics-cantilever',
     subjectId: 'statics',
+    topic: '보의 반력',
     title: '캔틸레버보의 고정단 반력',
     statement: '길이 L = 2 m인 캔틸레버보의 자유단에 집중하중 P = 3 kN이 아래로 작용한다. 자중은 무시한다.',
     parts: [
@@ -49,6 +51,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'statics-two-cables',
     subjectId: 'statics',
+    topic: '힘의 평형',
     title: '두 케이블로 매단 하중',
     statement:
       '무게 W = 1000 N인 물체를 두 케이블이 좌우 대칭으로 매달고 있다. 각 케이블은 수평면과 θ의 각을 이룬다.',
@@ -73,6 +76,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'mom-axial-rod',
     subjectId: 'mechanics_of_materials',
+    topic: '축하중',
     title: '원형봉의 축응력과 신장량',
     statement:
       '지름 d = 20 mm, 길이 L = 1 m인 강재 원형봉에 인장 하중 P = 31.4 kN이 작용한다. 탄성계수 E = 200 GPa.',
@@ -94,6 +98,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'mom-torsion-shaft',
     subjectId: 'mechanics_of_materials',
+    topic: '비틀림',
     title: '중실축의 비틀림',
     statement:
       '지름 d = 40 mm, 길이 L = 1 m인 중실 원형축에 토크 T = 500 N·m가 작용한다. 전단탄성계수 G = 80 GPa.',
@@ -115,6 +120,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'mom-bending-stress',
     subjectId: 'mechanics_of_materials',
+    topic: '굽힘',
     title: '직사각형 단면보의 굽힘응력',
     statement: '폭 b = 50 mm, 높이 h = 100 mm인 직사각형 단면보에 굽힘모멘트 M = 5 kN·m가 작용한다.',
     parts: [
@@ -137,6 +143,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'thermo-constant-pressure-heating',
     subjectId: 'thermodynamics',
+    topic: '열역학 제1법칙',
     title: '공기의 정압 가열',
     statement:
       '질량 m = 2 kg의 공기를 정압 상태에서 300 K에서 400 K로 가열한다. 공기는 이상기체이며 cp = 1.005 kJ/(kg·K)로 일정하다.',
@@ -157,6 +164,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'thermo-ideal-gas-tank',
     subjectId: 'thermodynamics',
+    topic: '이상기체',
     title: '강체 탱크 속 이상기체',
     statement:
       '체적 V = 0.5 m³인 강체 탱크에 공기가 압력 200 kPa, 온도 300 K로 들어 있다. 공기의 기체상수 R = 0.287 kJ/(kg·K).',
@@ -177,6 +185,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'thermo-carnot',
     subjectId: 'thermodynamics',
+    topic: '사이클',
     title: '카르노 열기관의 효율',
     statement: '고온 열저장조 800 K와 저온 열저장조 300 K 사이에서 작동하는 카르노 열기관이 있다.',
     parts: [
@@ -198,6 +207,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'fluid-pipe-flow-rate',
     subjectId: 'fluid_mechanics',
+    topic: '연속 방정식',
     title: '원형관의 유량',
     statement: '내경 D = 0.1 m인 원형관에 물(ρ = 1000 kg/m³)이 평균 유속 V = 2 m/s로 흐른다.',
     parts: [
@@ -217,6 +227,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'fluid-hydrostatic-pressure',
     subjectId: 'fluid_mechanics',
+    topic: '정수압',
     title: '수조 바닥의 정수압',
     statement:
       '물(ρ = 1000 kg/m³)이 깊이 h = 5 m까지 채워진 개방 수조가 있다. g = 9.81 m/s², 대기압 101.325 kPa.',
@@ -236,6 +247,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'fluid-pipe-contraction',
     subjectId: 'fluid_mechanics',
+    topic: '베르누이',
     title: '축소관의 유속과 압력 변화',
     statement:
       '수평 원형관의 지름이 D₁ = 0.1 m에서 D₂ = 0.05 m로 줄어든다. 상류 유속 V₁ = 2 m/s, 물의 ρ = 1000 kg/m³, 동점성계수 ν = 1.0 × 10⁻⁶ m²/s. 손실은 무시한다.',
@@ -260,6 +272,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'dynamics-spring-mass',
     subjectId: 'dynamics',
+    topic: '진동',
     title: '1자유도 스프링-질량계의 고유진동',
     statement: '질량 m = 2 kg, 스프링 상수 k = 800 N/m인 비감쇠 1자유도 스프링-질량계가 있다.',
     parts: [
@@ -281,6 +294,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'dynamics-free-fall',
     subjectId: 'dynamics',
+    topic: '에너지 보존',
     title: '자유낙하와 에너지 보존',
     statement: '질량 m = 2 kg인 물체를 높이 h = 5 m에서 정지 상태로 놓는다. g = 9.81 m/s², 공기 저항은 무시한다.',
     parts: [
@@ -300,6 +314,7 @@ export const PROBLEMS = Object.freeze([
   {
     id: 'dynamics-damped-vibration',
     subjectId: 'dynamics',
+    topic: '진동',
     title: '감쇠 1자유도계',
     statement:
       '질량 m = 2 kg, 스프링 상수 k = 800 N/m, 감쇠계수 c = 16 N·s/m인 점성 감쇠 1자유도계가 있다.',
@@ -317,6 +332,248 @@ export const PROBLEMS = Object.freeze([
       'ω_n = √(k/m) = 20 rad/s, ω_d = ω_n√(1 − ζ²) = 20 × √0.96 = 19.596 rad/s',
     ],
   },
+  // ───────── 추가 문제 ─────────
+  {
+    id: 'statics-incline-friction',
+    subjectId: 'statics',
+    topic: '마찰',
+    title: '경사면 위 블록의 정지마찰',
+    statement:
+      '질량 m = 10 kg인 블록이 수평과 30°를 이루는 경사면 위에 정지해 있다. g = 9.81 m/s², 정지마찰계수 μs = 0.7.',
+    parts: [
+      { label: '(a)', prompt: '블록이 정지해 있기 위해 필요한 마찰력의 크기 F', answer: { value: 49.05, unit: 'N' }, points: 3 },
+      { label: '(b)', prompt: '경사면이 블록에 주는 수직항력 N', answer: { value: 84.957, unit: 'N' }, points: 3 },
+      { label: '(c)', prompt: '미끄러지지 않기 위한 최소 정지마찰계수 μ_min', answer: { value: 0.57735 }, points: 4 },
+    ],
+    hints: [
+      '좌표축을 경사면에 평행·수직 방향으로 잡으면 식이 간단해집니다.',
+      '정지 상태의 마찰력은 μN이 아니라 평형 조건에서 정해집니다. μs·N은 최대 정지마찰력입니다.',
+      '미끄러지기 직전에는 필요한 마찰력이 최대 정지마찰력과 같아집니다.',
+    ],
+    solution: [
+      '경사면 방향 평형: F = mg sinθ = 10 × 9.81 × 0.5 = 49.05 N',
+      '경사면 수직 방향 평형: N = mg cosθ = 10 × 9.81 × 0.8660 = 84.96 N',
+      '미끄러지기 직전: μ_min·N = mg sinθ → μ_min = tanθ = tan30° = 0.5774',
+      'μs = 0.7 > 0.5774 이므로 블록은 정지 상태를 유지한다. (최대 정지마찰력 0.7 × 84.96 = 59.5 N > 49.05 N)',
+    ],
+  },
+  {
+    id: 'statics-simple-truss',
+    subjectId: 'statics',
+    topic: '트러스',
+    title: '삼각형 트러스의 부재력 (절점법)',
+    statement:
+      '지점 A(핀)와 B(롤러) 사이 거리는 4 m이다. 꼭짓점 C는 AB의 중점 바로 위 3 m 높이에 있고, C에 수직 하중 P = 12 kN이 아래로 작용한다. 부재는 AC, BC, AB 세 개이다.',
+    parts: [
+      { label: '(a)', prompt: '지점 A의 수직 반력 R_A', answer: { value: 6, unit: 'kN' }, points: 3 },
+      { label: '(b)', prompt: '부재 AC의 부재력 크기 F_AC', answer: { value: 7.2111, unit: 'kN' }, points: 4 },
+      { label: '(c)', prompt: '부재 AB의 부재력 크기 F_AB', answer: { value: 4, unit: 'kN' }, points: 3 },
+    ],
+    hints: [
+      '먼저 트러스 전체를 자유물체로 보고 반력을 구하세요. 구조와 하중이 대칭입니다.',
+      '절점 A에서는 미지 부재력이 두 개뿐입니다. 부재 AC의 방향 성분(수평 2 m, 수직 3 m)을 이용하세요.',
+      '부재력의 부호(인장/압축)는 절점에서 부재를 미는지 당기는지로 판단합니다.',
+    ],
+    solution: [
+      '대칭: R_A = R_B = P/2 = 6 kN',
+      'AC 길이 = √(2² + 3²) = 3.6056 m',
+      '절점 A, 수직 평형: F_AC × (3/3.6056) = 6 → F_AC = 7.211 kN (압축)',
+      '절점 A, 수평 평형: F_AB = F_AC × (2/3.6056) = 4 kN (인장)',
+    ],
+  },
+  {
+    id: 'mom-thermal-stress',
+    subjectId: 'mechanics_of_materials',
+    topic: '열응력',
+    title: '양단 고정봉의 열응력',
+    statement:
+      '길이 L = 1 m인 강재 봉의 양 끝이 벽에 고정되어 있다. 온도가 ΔT = 50 K 상승한다. 선팽창계수 α = 12 × 10⁻⁶ /K, E = 200 GPa.',
+    parts: [
+      { label: '(a)', prompt: '봉에 생기는 열응력의 크기 σ', answer: { value: 120, unit: 'MPa' }, points: 6 },
+      { label: '(b)', prompt: '양 끝이 자유롭다면 늘어났을 길이 δ_T', answer: { value: 0.6, unit: 'mm' }, points: 4 },
+    ],
+    hints: [
+      '먼저 구속이 없을 때의 자유 열팽창량을 생각해 보세요.',
+      '양단 고정이면 전체 변형량은 0입니다. 열변형을 상쇄하는 기계적 변형이 생겨야 합니다.',
+      '결과가 봉의 길이와 관계있는지 확인해 보세요.',
+    ],
+    solution: [
+      '자유 열팽창: δ_T = αΔT·L = 12 × 10⁻⁶ × 50 × 1000 mm = 0.6 mm',
+      '적합 조건(전체 변형 0): σL/E = αΔT·L',
+      'σ = EαΔT = 200,000 MPa × 12 × 10⁻⁶ × 50 = 120 MPa (압축)',
+      '열응력은 길이 L과 무관하다.',
+    ],
+  },
+  {
+    id: 'mom-pressure-vessel',
+    subjectId: 'mechanics_of_materials',
+    topic: '압력용기',
+    title: '얇은 원통형 압력용기',
+    statement: '내경 D = 1 m, 두께 t = 10 mm인 얇은 원통형 압력용기에 내압 p = 2 MPa가 작용한다.',
+    parts: [
+      { label: '(a)', prompt: '원주(후프) 응력 σ_h', answer: { value: 100, unit: 'MPa' }, points: 5 },
+      { label: '(b)', prompt: '축방향 응력 σ_a', answer: { value: 50, unit: 'MPa' }, points: 5 },
+    ],
+    hints: [
+      'D/t가 충분히 크면(대략 20 이상) 박육 가정을 쓸 수 있습니다.',
+      '원주 응력은 용기를 길이 방향으로 반 자른 자유물체, 축방향 응력은 단면으로 자른 자유물체에서 구합니다.',
+    ],
+    solution: [
+      'D/t = 1000/10 = 100 → 박육 가정 적용 가능',
+      'σ_h = pD/(2t) = 2 × 1000 / (2 × 10) = 100 MPa',
+      'σ_a = pD/(4t) = 2 × 1000 / (4 × 10) = 50 MPa',
+      '원주 응력이 축방향 응력의 2배이므로, 원통 용기는 축 방향으로 갈라지기 쉽다.',
+    ],
+  },
+  {
+    id: 'mom-euler-buckling',
+    subjectId: 'mechanics_of_materials',
+    topic: '좌굴',
+    title: '원형 기둥의 오일러 좌굴',
+    statement: '길이 L = 2 m, 지름 d = 40 mm인 강재 원형 기둥이 축 압축하중을 받는다. E = 200 GPa.',
+    parts: [
+      { label: '(a)', prompt: '양단 핀 지지일 때 임계 좌굴하중 P_cr', answer: { value: 62.013, unit: 'kN' }, points: 6 },
+      { label: '(b)', prompt: '한쪽 고정·다른 쪽 자유일 때 임계 좌굴하중 P_cr', answer: { value: 15.503, unit: 'kN' }, points: 4 },
+    ],
+    hints: [
+      '좌굴은 단면 2차 모멘트 I가 가장 작은 축 방향으로 일어납니다. 원형 단면은 모든 방향이 같습니다.',
+      '오일러 공식은 유효 좌굴 길이 L_e를 씁니다. 지지 조건에 따라 L_e가 달라집니다.',
+      '고정-자유 기둥의 유효 길이는 실제 길이보다 깁니다.',
+    ],
+    solution: [
+      'I = πd⁴/64 = π × 0.04⁴ / 64 = 1.2566 × 10⁻⁷ m⁴',
+      '(a) 핀-핀: L_e = L = 2 m, P_cr = π²EI/L_e² = π² × 200 × 10⁹ × 1.2566 × 10⁻⁷ / 2² = 62.01 kN',
+      '(b) 고정-자유: L_e = 2L = 4 m → P_cr = 62.01 / 4 = 15.50 kN',
+      '실제 설계에서는 세장비가 충분히 큰지(오일러 공식 적용 범위) 확인하고 안전계수를 적용한다.',
+    ],
+  },
+  {
+    id: 'thermo-adiabatic-compression',
+    subjectId: 'thermodynamics',
+    topic: '단열 과정',
+    title: '공기의 가역 단열 압축',
+    statement:
+      '공기를 100 kPa, 300 K에서 800 kPa까지 가역 단열 압축한다. 공기는 이상기체이며 k = 1.4, cv = 0.718 kJ/(kg·K)이다.',
+    parts: [
+      { label: '(a)', prompt: '압축 후 온도 T₂ (절대온도)', answer: { value: 543.43, unit: 'K' }, points: 5 },
+      { label: '(b)', prompt: '밀폐계로 볼 때 필요한 압축일의 크기 w (단위 질량당)', answer: { value: 174.79, unit: 'kJ/kg' }, points: 5 },
+    ],
+    hints: [
+      '가역 단열 과정의 이상기체는 Pv^k = 일정입니다. 이를 T와 P의 관계로 바꿔 보세요.',
+      '단열이므로 Q = 0입니다. 제1법칙에서 일과 내부에너지 변화의 관계를 쓰세요.',
+    ],
+    solution: [
+      'T₂ = T₁ (P₂/P₁)^((k−1)/k) = 300 × 8^(0.2857) = 300 × 1.8114 = 543.4 K',
+      '밀폐계 제1법칙(Q = 0): w_in = Δu = cv (T₂ − T₁)',
+      'w = 0.718 × (543.4 − 300) = 174.8 kJ/kg',
+    ],
+  },
+  {
+    id: 'thermo-otto-cycle',
+    subjectId: 'thermodynamics',
+    topic: '사이클',
+    title: '오토 사이클의 열효율',
+    statement: '공기 표준 오토 사이클의 비열비는 k = 1.4이다.',
+    parts: [
+      { label: '(a)', prompt: '압축비 r = 8일 때 열효율 η', answer: { value: 0.56472 }, points: 5 },
+      { label: '(b)', prompt: '압축비 r = 10일 때 열효율 η', answer: { value: 0.60189 }, points: 5 },
+    ],
+    hints: [
+      '오토 사이클의 이론 열효율은 압축비와 비열비만으로 정해집니다.',
+      '압축비가 커지면 효율은 어떻게 변할까요? 실제 엔진에서 압축비를 무한히 높이지 못하는 이유도 생각해 보세요.',
+    ],
+    solution: [
+      'η = 1 − 1/r^(k−1)',
+      '(a) r = 8: η = 1 − 8^(−0.4) = 1 − 0.4353 = 0.5647 (56.5%)',
+      '(b) r = 10: η = 1 − 10^(−0.4) = 1 − 0.3981 = 0.6019 (60.2%)',
+      '압축비를 높이면 효율이 오르지만, 가솔린 엔진에서는 노킹 때문에 한계가 있다.',
+    ],
+  },
+  {
+    id: 'fluid-pipe-friction-loss',
+    subjectId: 'fluid_mechanics',
+    topic: '관마찰',
+    title: '직관의 마찰 손실 (Darcy–Weisbach)',
+    statement:
+      '길이 L = 100 m, 내경 D = 0.1 m인 수평 직관에 물(ρ = 1000 kg/m³)이 평균 유속 V = 2 m/s로 흐른다. 마찰계수 f = 0.02, g = 9.81 m/s².',
+    parts: [
+      { label: '(a)', prompt: '마찰 수두손실 h_L', answer: { value: 4.0775, unit: 'm' }, points: 5 },
+      { label: '(b)', prompt: '마찰에 의한 압력 손실 Δp', answer: { value: 40, unit: 'kPa' }, points: 5 },
+    ],
+    hints: [
+      'Darcy–Weisbach 식은 수두손실을 L/D와 속도수두 V²/(2g)의 곱으로 표현합니다.',
+      '수두손실과 압력손실은 ρg로 서로 바꿀 수 있습니다.',
+    ],
+    solution: [
+      'h_L = f (L/D) V²/(2g) = 0.02 × (100/0.1) × 2² / (2 × 9.81) = 4.078 m',
+      'Δp = ρg·h_L = 1000 × 9.81 × 4.078 = 40,000 Pa = 40 kPa',
+      '(검산: Δp = f (L/D) ρV²/2 = 0.02 × 1000 × 1000 × 4/2 = 40 kPa ✓)',
+    ],
+  },
+  {
+    id: 'fluid-buoyancy',
+    subjectId: 'fluid_mechanics',
+    topic: '부력',
+    title: '물에 뜬 나무토막',
+    statement:
+      '크기 0.5 m × 0.4 m × 0.2 m(높이)인 나무토막(ρ = 600 kg/m³)이 넓은 면을 아래로 하여 물(ρ = 1000 kg/m³)에 떠 있다. g = 9.81 m/s².',
+    parts: [
+      { label: '(a)', prompt: '나무토막에 작용하는 부력 F_B', answer: { value: 235.44, unit: 'N' }, points: 5 },
+      { label: '(b)', prompt: '물에 잠긴 깊이 h', answer: { value: 0.12, unit: 'm' }, points: 5 },
+    ],
+    hints: [
+      '떠 있는 물체는 부력과 무게가 평형을 이룹니다.',
+      '아르키메데스 원리: 부력은 물체가 밀어낸 유체의 무게와 같습니다.',
+    ],
+    solution: [
+      '부피 V = 0.5 × 0.4 × 0.2 = 0.04 m³',
+      '평형: F_B = W = ρ_wood·V·g = 600 × 0.04 × 9.81 = 235.44 N',
+      '잠긴 부피: V_sub = F_B / (ρ_water·g) = 0.024 m³ → h = 0.024 / (0.5 × 0.4) = 0.12 m',
+      '잠긴 비율 = ρ_wood/ρ_water = 0.6 (높이 0.2 m의 60%)',
+    ],
+  },
+  {
+    id: 'dynamics-curve-friction',
+    subjectId: 'dynamics',
+    topic: '원운동',
+    title: '평탄한 커브를 도는 자동차',
+    statement:
+      '자동차가 반지름 r = 50 m인 평탄한(뱅크각 없는) 커브를 일정한 속력 72 km/h로 돈다. g = 9.81 m/s².',
+    parts: [
+      { label: '(a)', prompt: '구심가속도 a_n', answer: { value: 8, unit: 'm/s²' }, points: 5 },
+      { label: '(b)', prompt: '미끄러지지 않기 위한 타이어-노면 최소 마찰계수 μ_min', answer: { value: 0.81549 }, points: 5 },
+    ],
+    hints: [
+      '먼저 속력을 m/s로 바꾸세요.',
+      '평탄한 커브에서 구심력을 제공하는 힘은 무엇일까요?',
+    ],
+    solution: [
+      'v = 72 km/h = 20 m/s',
+      'a_n = v²/r = 20² / 50 = 8 m/s²',
+      '구심력 = 마찰력: m·v²/r ≤ μ·m·g → μ_min = v²/(rg) = 400 / (50 × 9.81) = 0.8155',
+      '질량과 무관하다. 젖은 노면(μ ≈ 0.4~0.5)에서는 이 속도로 돌 수 없다.',
+    ],
+  },
+  {
+    id: 'dynamics-flywheel',
+    subjectId: 'dynamics',
+    topic: '강체 회전',
+    title: '플라이휠의 회전 운동에너지',
+    statement: '질량 m = 20 kg, 반지름 R = 0.3 m인 균일한 원판형 플라이휠이 3000 rpm으로 회전한다.',
+    parts: [
+      { label: '(a)', prompt: '회전축에 대한 질량 관성모멘트 I', answer: { value: 0.9, unit: 'kg·m²' }, points: 4 },
+      { label: '(b)', prompt: '회전 운동에너지 E', answer: { value: 44.413, unit: 'kJ' }, points: 6 },
+    ],
+    hints: [
+      '균일한 원판의 관성모멘트는 링(mR²)보다 작습니다.',
+      '운동에너지 식에는 rad/s 단위의 각속도를 써야 합니다.',
+    ],
+    solution: [
+      'I = ½ m R² = 0.5 × 20 × 0.3² = 0.9 kg·m²',
+      'ω = 3000 × 2π / 60 = 314.16 rad/s',
+      'E = ½ I ω² = 0.5 × 0.9 × 314.16² = 44,413 J = 44.41 kJ',
+    ],
+  },
 ]);
 
 export function findProblem(problemId) {
@@ -329,6 +586,7 @@ export function toPublicProblem(problem) {
     id: problem.id,
     subjectId: problem.subjectId,
     title: problem.title,
+    topic: problem.topic,
     statement: problem.statement,
     parts: problem.parts.map((p) => ({ label: p.label, prompt: p.prompt, points: p.points })),
     hints: [...problem.hints],

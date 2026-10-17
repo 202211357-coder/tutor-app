@@ -4,8 +4,10 @@ import express from 'express';
 import multer from 'multer';
 import { gradeProblem } from '../shared/grading.js';
 import { detectImageType, IMAGE_ERROR, MAX_IMAGE_BYTES, validateImageMeta } from '../shared/imagePolicy.js';
-import { findProblem, getSolution, listPublicProblems } from '../shared/problems.js';
+import { findProblem, getSolution, listPublicProblems, PROBLEMS } from '../shared/problems.js';
 import { DEFAULT_MODE, SUBJECTS, UnknownModeError, UnknownSubjectError } from '../shared/subjects.js';
+import { createHistoryStore } from './historyStore.js';
+import { summarizeHistory } from './historySummary.js';
 import { TutorServiceError } from './tutorService.js';
 
 export const MAX_QUESTION_LENGTH = 4000;
@@ -45,9 +47,10 @@ function parseHistory(raw) {
 }
 
 /**
- * @param {{tutorService: {ask: Function, isConfigured?: boolean}, staticDir?: string}} deps
+ * @param {{tutorService: {ask: Function, isConfigured?: boolean}, historyStore?: ReturnType<typeof createHistoryStore>, staticDir?: string}} deps
+ *   historyStore를 생략하면 메모리에만 기록한다.
  */
-export function createApp({ tutorService, staticDir }) {
+export function createApp({ tutorService, historyStore = createHistoryStore(), staticDir }) {
   const app = express();
   app.use(express.json({ limit: '100kb' }));
 
@@ -78,7 +81,32 @@ export function createApp({ tutorService, staticDir }) {
     if (answers !== undefined && (typeof answers !== 'object' || answers === null || Array.isArray(answers))) {
       return sendError(res, 400, 'BAD_ANSWERS', 'answers는 { 소문항: 답안 } 형태여야 합니다.');
     }
-    res.json(gradeProblem(problem, answers ?? {}));
+    const result = gradeProblem(problem, answers ?? {});
+    let recorded = true;
+    try {
+      historyStore.record({
+        problemId: problem.id,
+        subjectId: problem.subjectId,
+        earned: result.earned,
+        max: result.max,
+        percent: result.percent,
+        answers: answers ?? {},
+      });
+    } catch (error) {
+      // 기록 저장에 실패해도(디스크 문제 등) 채점 결과는 돌려준다.
+      console.error('[tutor-app] 학습 기록 저장 실패:', error);
+      recorded = false;
+    }
+    res.json({ ...result, recorded });
+  });
+
+  app.get('/api/history', (_req, res) => {
+    res.json(summarizeHistory(historyStore.list(), PROBLEMS, SUBJECTS));
+  });
+
+  app.delete('/api/history', (_req, res) => {
+    historyStore.clear();
+    res.status(204).end();
   });
 
   app.post('/api/tutor', uploadImage, async (req, res) => {

@@ -93,6 +93,28 @@ describe('gradePart: 무차원·백분율 답안', () => {
   });
 });
 
+describe('gradePart: 온도·관성모멘트 단위', () => {
+  const tempPart = { answer: { value: 543.43, unit: 'K' }, points: 5 };
+
+  it('절대온도 K로 답하면 채점한다', () => {
+    expect(gradePart('543 K', tempPart).status).toBe(GRADE_STATUS.CORRECT);
+    expect(gradePart('543', tempPart).status).toBe(GRADE_STATUS.MISSING_UNIT);
+  });
+
+  it('°C로 답하면 K로 쓰라고 안내한다 (영점이 달라 배율 환산 불가)', () => {
+    const r = gradePart('270.28 °C', tempPart);
+    expect(r.status).toBe(GRADE_STATUS.UNKNOWN_UNIT);
+    expect(r.feedback).toContain('절대온도(K)');
+  });
+
+  it('관성모멘트 kg·m² 표기를 여러 형태로 받는다', () => {
+    const part = { answer: { value: 0.9, unit: 'kg·m²' } };
+    for (const answer of ['0.9 kg·m²', '0.9 kg*m^2', '0.9 kg.m2']) {
+      expect(gradePart(answer, part).status).toBe(GRADE_STATUS.CORRECT);
+    }
+  });
+});
+
 describe('gradePart: 부분 점수 경계', () => {
   // 기본 허용오차: 1% 이내 만점, 5% 이내 절반
   it.each([

@@ -12,7 +12,7 @@ const STATUS_LABEL = {
   unit_mismatch: '단위 차원 불일치',
 };
 
-function ProblemCard({ problem }) {
+function ProblemCard({ problem, bestPercent, onGraded }) {
   const [answers, setAnswers] = useState({});
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -35,6 +35,7 @@ function ProblemCard({ problem }) {
     setError('');
     try {
       setResult(await api.gradeAnswers(problem.id, answers));
+      onGraded();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -46,7 +47,13 @@ function ProblemCard({ problem }) {
 
   return (
     <article className="problem">
-      <h3>{problem.title}</h3>
+      <h3>
+        {problem.title}
+        {problem.topic && <span className="topic-chip">{problem.topic}</span>}
+        {bestPercent !== undefined && (
+          <span className={bestPercent >= 100 ? 'best-badge done' : 'best-badge'}>최고 {bestPercent}%</span>
+        )}
+      </h3>
       <p>{problem.statement}</p>
       <form onSubmit={handleGrade}>
         {problem.parts.map((part) => {
@@ -123,21 +130,49 @@ function ProblemCard({ problem }) {
 export default function ProblemSolver({ subjectId }) {
   const [problems, setProblems] = useState(null);
   const [error, setError] = useState('');
+  const [topic, setTopic] = useState('');
+  const [bestByProblem, setBestByProblem] = useState({});
+
+  function refreshBest() {
+    // 기록을 못 불러와도 문제 풀이에는 지장이 없으므로 배지만 생략한다.
+    api
+      .fetchHistory()
+      .then((summary) => setBestByProblem(summary.bestByProblem ?? {}))
+      .catch(() => {});
+  }
 
   useEffect(() => {
     api
       .fetchProblems(subjectId)
       .then(setProblems)
       .catch((err) => setError(err.message));
+    refreshBest();
   }, [subjectId]);
 
   if (error) return <p className="error">문제를 불러오지 못했습니다: {error}</p>;
   if (!problems) return <p>불러오는 중…</p>;
   if (!problems.length) return <p>이 과목에는 아직 연습 문제가 없습니다.</p>;
+
+  const topics = [...new Set(problems.map((p) => p.topic).filter(Boolean))];
+  const visible = topic ? problems.filter((p) => p.topic === topic) : problems;
+
   return (
     <section className="problem-list">
-      {problems.map((p) => (
-        <ProblemCard key={p.id} problem={p} />
+      {topics.length > 1 && (
+        <label className="topic-filter">
+          주제
+          <select value={topic} onChange={(e) => setTopic(e.target.value)}>
+            <option value="">전체 ({problems.length})</option>
+            {topics.map((t) => (
+              <option key={t} value={t}>
+                {t} ({problems.filter((p) => p.topic === t).length})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {visible.map((p) => (
+        <ProblemCard key={p.id} problem={p} bestPercent={bestByProblem[p.id]} onGraded={refreshBest} />
       ))}
     </section>
   );

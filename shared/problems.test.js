@@ -4,7 +4,7 @@ import { findProblem, getSolution, listPublicProblems, PROBLEMS, toPublicProblem
 import { SUBJECTS } from './subjects.js';
 import { convert } from './units.js';
 
-const { PI, sqrt, sin } = Math;
+const { PI, sqrt, sin, cos } = Math;
 const g = 9.81;
 
 // 각 정답을 공식으로 다시 계산한 값 (단위는 문항의 정답 단위와 같게 맞춤).
@@ -41,6 +41,38 @@ const RECOMPUTED = {
     '(c)': (2 * PI) / sqrt(800 / 2),
   },
   'dynamics-free-fall': { '(a)': sqrt(2 * g * 5), '(b)': sqrt((2 * 5) / g) },
+  'statics-incline-friction': {
+    '(a)': 10 * g * sin(PI / 6),
+    '(b)': 10 * g * cos(PI / 6),
+    '(c)': Math.tan(PI / 6),
+  },
+  'statics-simple-truss': (() => {
+    const lac = sqrt(2 ** 2 + 3 ** 2);
+    const fac = (6 * lac) / 3;
+    return { '(a)': 12 / 2, '(b)': fac, '(c)': (fac * 2) / lac };
+  })(),
+  'mom-thermal-stress': { '(a)': (200e9 * 12e-6 * 50) / 1e6, '(b)': 12e-6 * 50 * 1000 },
+  'mom-pressure-vessel': { '(a)': (2 * 1000) / (2 * 10), '(b)': (2 * 1000) / (4 * 10) },
+  'mom-euler-buckling': (() => {
+    const pcr = (PI ** 2 * 200e9 * ((PI * 0.04 ** 4) / 64)) / 2 ** 2 / 1e3;
+    return { '(a)': pcr, '(b)': pcr / 4 };
+  })(),
+  'thermo-adiabatic-compression': (() => {
+    const t2 = 300 * 8 ** ((1.4 - 1) / 1.4);
+    return { '(a)': t2, '(b)': 0.718 * (t2 - 300) };
+  })(),
+  'thermo-otto-cycle': { '(a)': 1 - 8 ** -0.4, '(b)': 1 - 10 ** -0.4 },
+  'fluid-pipe-friction-loss': {
+    '(a)': (0.02 * (100 / 0.1) * 2 ** 2) / (2 * g),
+    '(b)': (1000 * g * ((0.02 * (100 / 0.1) * 2 ** 2) / (2 * g))) / 1000,
+  },
+  'fluid-buoyancy': { '(a)': 600 * 0.04 * g, '(b)': (600 * 0.04) / 1000 / (0.5 * 0.4) },
+  'dynamics-curve-friction': { '(a)': (72 / 3.6) ** 2 / 50, '(b)': (72 / 3.6) ** 2 / (50 * g) },
+  'dynamics-flywheel': (() => {
+    const inertia = 0.5 * 20 * 0.3 ** 2;
+    const omega = (3000 * 2 * PI) / 60;
+    return { '(a)': inertia, '(b)': (0.5 * inertia * omega ** 2) / 1000 };
+  })(),
   'dynamics-damped-vibration': {
     '(a)': 16 / (2 * sqrt(800 * 2)),
     '(b)': sqrt(800 / 2) * sqrt(1 - (16 / (2 * sqrt(800 * 2))) ** 2),
@@ -53,8 +85,14 @@ describe('문제 데이터 구조', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it.each(SUBJECTS.map((s) => s.id))('%s 과목에 문제가 3개 이상 있다', (subjectId) => {
-    expect(PROBLEMS.filter((p) => p.subjectId === subjectId).length).toBeGreaterThanOrEqual(3);
+  it.each(SUBJECTS.map((s) => s.id))('%s 과목에 문제가 5개 이상 있다', (subjectId) => {
+    expect(PROBLEMS.filter((p) => p.subjectId === subjectId).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it.each(PROBLEMS.map((p) => [p.id, p]))('%s: 주제(topic)가 있고 공개 데이터에도 포함된다', (_id, problem) => {
+    expect(typeof problem.topic).toBe('string');
+    expect(problem.topic.length).toBeGreaterThan(0);
+    expect(toPublicProblem(problem).topic).toBe(problem.topic);
   });
 
   it.each(PROBLEMS.map((p) => [p.id, p]))('%s: 과목·소문항·힌트·풀이가 모두 있다', (_id, problem) => {
