@@ -240,7 +240,7 @@ const FORMULAS = {
   },
   'thermo-otto-cycle': ({ ra, rb }) => ({ '(a)': 1 - 1 / ra ** 0.4, '(b)': 1 - 1 / rb ** 0.4 }),
   'fluid-pipe-flow-rate': ({ D, V }) => ({ '(a)': PI * (D / 2) ** 2 * V, '(b)': 1000 * PI * (D / 2) ** 2 * V }),
-  'fluid-hydrostatic-pressure': ({ h }) => ({ '(a)': 9.81 * h, '(b)': 101.325 + 9.81 * h }),
+  'fluid-hydrostatic-pressure': ({ h, rho }) => ({ '(a)': (rho * 9.81 * h) / 1000, '(b)': 101.325 + (rho * 9.81 * h) / 1000 }),
   'fluid-pipe-contraction': ({ D1, D2, V1 }) => {
     const v2 = (V1 * D1 * D1) / (D2 * D2);
     return { '(a)': v2, '(b)': (500 * (v2 * v2 - V1 * V1)) / 1000, '(c)': V1 * D1 * 1e6 };
@@ -315,6 +315,17 @@ describe('변형 문제 (숫자 바꾸기)', () => {
     }
   });
 
+  it.each(PROBLEMS.map((p) => [p.id]))('%s: 수치 조합이 충분히 다양하다 (seed 400개 중 서로 다른 조합 200개 이상)', (id) => {
+    const seen = new Set();
+    for (let seed = 1; seed <= 400; seed++) seen.add(JSON.stringify(getProblemInstance(id, seed).params));
+    expect(seen.size).toBeGreaterThanOrEqual(200);
+  });
+
+  it.each(PROBLEMS.map((p) => [p.id]))('%s: 유효 조합이 드물어 기본 수치로 되돌아가는 경우가 없다', (id) => {
+    const base = JSON.stringify(findProblem(id).params);
+    for (let seed = 1; seed <= 400; seed++) expect(JSON.stringify(getProblemInstance(id, seed).params)).not.toBe(base);
+  });
+
   it('seed가 다르면 대체로 다른 숫자가 나온다', () => {
     const variants = new Set(SEEDS.map((seed) => JSON.stringify(getProblemInstance('mom-axial-rod', seed).params)));
     expect(variants.size).toBeGreaterThan(5);
@@ -327,8 +338,13 @@ describe('변형 문제 (숫자 바꾸기)', () => {
     ['mom-pressure-vessel', (i) => (i.params.D * 1000) / i.params.t >= 20 && i.parts[0].answer.value <= 250],
     ['statics-incline-friction', (i) => i.parts[2].answer.value < 0.7],
     ['dynamics-curve-friction', (i) => i.parts[1].answer.value <= 1],
-    ['dynamics-damped-vibration', (i) => i.parts[0].answer.value < 1],
-  ])('%s: 변형 문제도 물리적 가정(탄성 범위·박육·정지·부족감쇠 등)을 지킨다', (id, check) => {
+    ['dynamics-damped-vibration', (i) => i.parts[0].answer.value < 1 && i.params.c > 0],
+    ['mom-euler-buckling', (i) => (i.params.L * 1000) / (i.params.d / 4) >= 100],
+    ['mom-thermal-stress', (i) => i.parts[0].answer.value <= 250],
+    ['mom-bending-stress', (i) => i.params.h >= i.params.b],
+    ['thermo-ideal-gas-tank', (i) => i.params.T2 > i.params.T1],
+    ['fluid-pipe-contraction', (i) => i.params.D2 < i.params.D1],
+  ])('%s: 변형 문제도 물리적 가정(탄성 범위·박육·정지·부족감쇠·세장비 등)을 지킨다', (id, check) => {
     for (const seed of SEEDS) expect(check(getProblemInstance(id, seed)), `seed=${seed}`).toBe(true);
   });
 

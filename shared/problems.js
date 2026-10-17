@@ -29,6 +29,14 @@ export function createRng(seed) {
 
 const pick = (rng, values) => values[Math.floor(rng() * values.length)];
 
+/** min~max 사이에서 step 간격의 값을 고른다 (부동소수점 꼬리 없이 step의 자릿수로 반올림). */
+const range = (rng, min, max, step) => {
+  const count = Math.round((max - min) / step);
+  const k = Math.floor(rng() * (count + 1));
+  const decimals = (String(step).split('.')[1] ?? '').length;
+  return Number((min + k * step).toFixed(decimals));
+};
+
 const SUPERSCRIPT = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
 
 /** 풀이·정답 표시용 숫자 (유효숫자 sig자리, 아주 크거나 작으면 × 10ⁿ 표기) */
@@ -53,6 +61,13 @@ export function fmt(x, sig = 4) {
 
 const part = (label, prompt, value, unit, points) => ({ label, prompt, answer: unit ? { value, unit } : { value }, points });
 
+// 정수압 문제의 유체 (밀도, kg/m³)
+const FLUIDS = [
+  { fluid: '물', rho: 1000 },
+  { fluid: '바닷물', rho: 1025 },
+  { fluid: '기름', rho: 850 },
+];
+
 const TEMPLATES = [
   // ───────── 정역학 ─────────
   {
@@ -61,7 +76,7 @@ const TEMPLATES = [
     topic: '보의 반력',
     title: '단순지지보의 반력과 최대 굽힘모멘트',
     defaults: { L: 4, P: 10 },
-    vary: (r) => ({ L: pick(r, [3, 4, 5, 6, 8]), P: pick(r, [6, 8, 10, 12, 15, 20]) }),
+    vary: (r) => ({ L: range(r, 2, 10, 0.5), P: range(r, 2, 50, 1) }),
     build: ({ L, P }) => {
       const RA = P / 2;
       const M = (P * L) / 4;
@@ -88,7 +103,7 @@ const TEMPLATES = [
     topic: '보의 반력',
     title: '캔틸레버보의 고정단 반력',
     defaults: { L: 2, P: 3 },
-    vary: (r) => ({ L: pick(r, [1, 1.5, 2, 2.5, 3]), P: pick(r, [2, 3, 4, 5, 8]) }),
+    vary: (r) => ({ L: range(r, 0.5, 5, 0.25), P: range(r, 1, 30, 0.5) }),
     build: ({ L, P }) => ({
       statement: `길이 L = ${L} m인 캔틸레버보의 자유단에 집중하중 P = ${P} kN이 아래로 작용한다. 자중은 무시한다.`,
       parts: [part('(a)', '고정단의 수직 반력 R', P, 'kN', 4), part('(b)', '고정단의 반력 모멘트 M_A의 크기', P * L, 'kN·m', 6)],
@@ -109,7 +124,7 @@ const TEMPLATES = [
     topic: '힘의 평형',
     title: '두 케이블로 매단 하중',
     defaults: { W: 1000, thA: 30, thB: 60 },
-    vary: (r) => ({ W: pick(r, [500, 800, 1000, 1200, 1500, 2000]), thA: pick(r, [20, 25, 30, 35]), thB: pick(r, [45, 50, 60, 70]) }),
+    vary: (r) => ({ W: range(r, 200, 5000, 50), thA: range(r, 10, 40, 1), thB: range(r, 45, 80, 1) }),
     build: ({ W, thA, thB }) => {
       const TA = W / (2 * sin(thA * DEG));
       const TB = W / (2 * sin(thB * DEG));
@@ -139,7 +154,9 @@ const TEMPLATES = [
     topic: '마찰',
     title: '경사면 위 블록의 정지마찰',
     defaults: { m: 10, th: 30 },
-    vary: (r) => ({ m: pick(r, [2, 5, 10, 20]), th: pick(r, [15, 20, 25, 30]) }),
+    vary: (r) => ({ m: range(r, 1, 50, 0.5), th: range(r, 5, 34, 1) }),
+    // μs = 0.7이므로 tanθ < 0.7 (θ < 35°)이면 블록이 정지 상태를 유지한다.
+    valid: ({ th }) => tan(th * DEG) < 0.7,
     build: ({ m, th }) => {
       const F = m * G * sin(th * DEG);
       const N = m * G * cos(th * DEG);
@@ -171,7 +188,7 @@ const TEMPLATES = [
     topic: '트러스',
     title: '삼각형 트러스의 부재력 (절점법)',
     defaults: { s: 4, h: 3, P: 12 },
-    vary: (r) => ({ s: pick(r, [4, 6, 8]), h: pick(r, [2, 3, 4]), P: pick(r, [6, 10, 12, 20]) }),
+    vary: (r) => ({ s: range(r, 2, 12, 0.5), h: range(r, 1, 6, 0.5), P: range(r, 2, 50, 1) }),
     build: ({ s, h, P }) => {
       const RA = P / 2;
       const lac = sqrt((s / 2) ** 2 + h ** 2);
@@ -206,7 +223,7 @@ const TEMPLATES = [
     topic: '축하중',
     title: '원형봉의 축응력과 신장량',
     defaults: { d: 20, L: 1, P: 31.4 },
-    vary: (r) => ({ d: pick(r, [10, 12, 16, 20, 25, 30]), L: pick(r, [0.5, 1, 1.5, 2]), P: pick(r, [10, 20, 30, 40, 50]) }),
+    vary: (r) => ({ d: range(r, 8, 40, 1), L: range(r, 0.2, 3, 0.1), P: range(r, 1, 100, 0.5) }),
     // 선형 탄성 가정이 성립하도록 응력을 일반 강재 항복강도보다 낮게 유지한다.
     valid: ({ d, P }) => (P * 1000) / ((PI * d ** 2) / 4) <= 250,
     build: ({ d, L, P }) => {
@@ -235,7 +252,7 @@ const TEMPLATES = [
     topic: '비틀림',
     title: '중실축의 비틀림',
     defaults: { d: 40, L: 1, T: 500 },
-    vary: (r) => ({ d: pick(r, [30, 40, 50, 60]), L: pick(r, [0.5, 1, 1.5, 2]), T: pick(r, [200, 300, 500, 800, 1000, 1500]) }),
+    vary: (r) => ({ d: range(r, 15, 80, 1), L: range(r, 0.3, 3, 0.1), T: range(r, 50, 3000, 10) }),
     valid: ({ d, T }) => (16 * T) / (PI * (d / 1000) ** 3) / 1e6 <= 150,
     build: ({ d, L, T }) => {
       const dm = d / 1000;
@@ -264,8 +281,9 @@ const TEMPLATES = [
     topic: '굽힘',
     title: '직사각형 단면보의 굽힘응력',
     defaults: { b: 50, h: 100, M: 5 },
-    vary: (r) => ({ b: pick(r, [30, 40, 50, 60]), h: pick(r, [60, 80, 100, 120, 150]), M: pick(r, [2, 3, 5, 8, 10]) }),
-    valid: ({ b, h, M }) => (M * 1e6 * (h / 2)) / ((b * h ** 3) / 12) <= 250,
+    vary: (r) => ({ b: range(r, 20, 100, 5), h: range(r, 40, 250, 5), M: range(r, 0.5, 30, 0.5) }),
+    // 세운 직사각형 단면(h ≥ b)이고 응력이 항복강도보다 낮은 조합만 쓴다.
+    valid: ({ b, h, M }) => h >= b && (M * 1e6 * (h / 2)) / ((b * h ** 3) / 12) <= 250,
     build: ({ b, h, M }) => {
       const I = (b * h ** 3) / 12;
       const sigma = (M * 1e6 * (h / 2)) / I;
@@ -294,7 +312,8 @@ const TEMPLATES = [
     topic: '열응력',
     title: '양단 고정봉의 열응력',
     defaults: { L: 1, dT: 50 },
-    vary: (r) => ({ L: pick(r, [0.5, 1, 2, 3]), dT: pick(r, [20, 30, 40, 50, 60, 80]) }),
+    vary: (r) => ({ L: range(r, 0.2, 5, 0.1), dT: range(r, 10, 120, 1) }),
+    valid: ({ dT }) => 200e3 * 12e-6 * dT <= 250,
     build: ({ L, dT }) => {
       const sigma = 200e3 * 12e-6 * dT;
       const delta = 12e-6 * dT * L * 1000;
@@ -324,7 +343,7 @@ const TEMPLATES = [
     topic: '압력용기',
     title: '얇은 원통형 압력용기',
     defaults: { D: 1, t: 10, p: 2 },
-    vary: (r) => ({ D: pick(r, [0.5, 1, 1.5, 2]), t: pick(r, [5, 8, 10, 12, 15, 20]), p: pick(r, [0.5, 1, 2, 3]) }),
+    vary: (r) => ({ D: range(r, 0.3, 3, 0.1), t: range(r, 3, 30, 1), p: range(r, 0.2, 5, 0.1) }),
     // 박육 가정(D/t ≥ 20)이 성립하고 응력이 항복강도보다 낮은 조합만 쓴다.
     valid: ({ D, t, p }) => (D * 1000) / t >= 20 && (p * D * 1000) / (2 * t) <= 250,
     build: ({ D, t, p }) => {
@@ -353,7 +372,9 @@ const TEMPLATES = [
     topic: '좌굴',
     title: '원형 기둥의 오일러 좌굴',
     defaults: { L: 2, d: 40 },
-    vary: (r) => ({ L: pick(r, [1, 1.5, 2, 2.5, 3]), d: pick(r, [20, 30, 40, 50]) }),
+    vary: (r) => ({ L: range(r, 0.5, 5, 0.1), d: range(r, 10, 80, 2) }),
+    // 오일러 공식은 세장비가 큰(λ = L/r ≥ 100, 원형 단면 r = d/4) 긴 기둥에서만 성립한다.
+    valid: ({ L, d }) => (L * 1000) / (d / 4) >= 100,
     build: ({ L, d }) => {
       const dm = d / 1000;
       const I = (PI * dm ** 4) / 64;
@@ -386,7 +407,7 @@ const TEMPLATES = [
     topic: '열역학 제1법칙',
     title: '공기의 정압 가열',
     defaults: { m: 2, T1: 300, dT: 100 },
-    vary: (r) => ({ m: pick(r, [1, 1.5, 2, 3, 5]), T1: pick(r, [280, 300, 320]), dT: pick(r, [50, 100, 150, 200]) }),
+    vary: (r) => ({ m: range(r, 0.5, 10, 0.5), T1: range(r, 270, 350, 5), dT: range(r, 10, 300, 5) }),
     build: ({ m, T1, dT }) => {
       const Q = m * 1.005 * dT;
       const dh = 1.005 * dT;
@@ -411,12 +432,10 @@ const TEMPLATES = [
     topic: '이상기체',
     title: '강체 탱크 속 이상기체',
     defaults: { V: 0.5, P1: 200, T1: 300, T2: 400 },
-    vary: (r) => ({
-      V: pick(r, [0.2, 0.5, 1, 2]),
-      P1: pick(r, [100, 150, 200, 300, 500]),
-      T1: pick(r, [290, 300, 310]),
-      T2: pick(r, [350, 400, 450, 500]),
-    }),
+    vary: (r) => {
+      const T1 = range(r, 270, 350, 5);
+      return { V: range(r, 0.05, 5, 0.05), P1: range(r, 100, 1000, 10), T1, T2: T1 + range(r, 20, 300, 10) };
+    },
     build: ({ V, P1, T1, T2 }) => {
       const m = (P1 * V) / (0.287 * T1);
       const P2 = (P1 * T2) / T1;
@@ -444,7 +463,7 @@ const TEMPLATES = [
     topic: '사이클',
     title: '카르노 열기관의 효율',
     defaults: { TH: 800, TL: 300, QH: 1000 },
-    vary: (r) => ({ TH: pick(r, [600, 700, 800, 1000, 1200]), TL: pick(r, [280, 300, 320, 350]), QH: pick(r, [500, 1000, 1500, 2000]) }),
+    vary: (r) => ({ TH: range(r, 500, 1500, 10), TL: range(r, 250, 400, 5), QH: range(r, 100, 5000, 50) }),
     build: ({ TH, TL, QH }) => {
       const eta = 1 - TL / TH;
       return {
@@ -468,7 +487,7 @@ const TEMPLATES = [
     topic: '단열 과정',
     title: '공기의 가역 단열 압축',
     defaults: { T1: 300, ratio: 8 },
-    vary: (r) => ({ T1: pick(r, [290, 300, 310]), ratio: pick(r, [4, 6, 8, 10, 12]) }),
+    vary: (r) => ({ T1: range(r, 270, 350, 5), ratio: range(r, 2, 20, 0.5) }),
     build: ({ T1, ratio }) => {
       const T2 = T1 * ratio ** (0.4 / 1.4);
       const w = 0.718 * (T2 - T1);
@@ -496,7 +515,7 @@ const TEMPLATES = [
     topic: '사이클',
     title: '오토 사이클의 열효율',
     defaults: { ra: 8, rb: 10 },
-    vary: (r) => ({ ra: pick(r, [6, 7, 8]), rb: pick(r, [9, 10, 11, 12]) }),
+    vary: (r) => ({ ra: range(r, 5, 9, 0.25), rb: range(r, 9.25, 14, 0.25) }),
     build: ({ ra, rb }) => {
       const ea = 1 - ra ** -0.4;
       const eb = 1 - rb ** -0.4;
@@ -527,7 +546,7 @@ const TEMPLATES = [
     topic: '연속 방정식',
     title: '원형관의 유량',
     defaults: { D: 0.1, V: 2 },
-    vary: (r) => ({ D: pick(r, [0.05, 0.08, 0.1, 0.15, 0.2]), V: pick(r, [0.5, 1, 1.5, 2, 3]) }),
+    vary: (r) => ({ D: range(r, 0.02, 0.5, 0.01), V: range(r, 0.2, 5, 0.1) }),
     build: ({ D, V }) => {
       const A = (PI * D ** 2) / 4;
       const Q = A * V;
@@ -548,16 +567,16 @@ const TEMPLATES = [
     subjectId: 'fluid_mechanics',
     topic: '정수압',
     title: '수조 바닥의 정수압',
-    defaults: { h: 5 },
-    vary: (r) => ({ h: pick(r, [2, 3, 5, 8, 10, 15]) }),
-    build: ({ h }) => {
-      const pg = (1000 * G * h) / 1000;
+    defaults: { h: 5, fluid: '물', rho: 1000 },
+    vary: (r) => ({ h: range(r, 0.5, 50, 0.5), ...pick(r, FLUIDS) }),
+    build: ({ h, fluid, rho }) => {
+      const pg = (rho * G * h) / 1000;
       return {
-        statement: `물(ρ = 1000 kg/m³)이 깊이 h = ${h} m까지 채워진 개방 수조가 있다. g = 9.81 m/s², 대기압 101.325 kPa.`,
+        statement: `${fluid}(ρ = ${rho} kg/m³)이 깊이 h = ${h} m까지 채워진 개방 수조가 있다. g = 9.81 m/s², 대기압 101.325 kPa.`,
         parts: [part('(a)', '바닥에서의 계기압력', pg, 'kPa', 5), part('(b)', '바닥에서의 절대압력', 101.325 + pg, 'kPa', 5)],
         hints: ['정지 유체의 압력은 깊이에 비례해 증가합니다 (p = ρgh).', '계기압력과 절대압력의 차이는 무엇인지 떠올려 보세요.'],
         solution: [
-          `p_gage = ρgh = 1000 × 9.81 × ${h} = ${fmt(pg * 1000, 5)} Pa = ${fmt(pg)} kPa`,
+          `p_gage = ρgh = ${rho} × 9.81 × ${h} = ${fmt(pg * 1000, 5)} Pa = ${fmt(pg)} kPa`,
           `p_abs = p_atm + p_gage = 101.325 + ${fmt(pg)} = ${fmt(101.325 + pg, 5)} kPa`,
         ],
       };
@@ -570,8 +589,8 @@ const TEMPLATES = [
     title: '축소관의 유속과 압력 변화',
     defaults: { D1: 0.1, D2: 0.05, V1: 2 },
     vary: (r) => {
-      const D1 = pick(r, [0.1, 0.15, 0.2]);
-      return { D1, D2: Number((D1 * pick(r, [0.5, 0.6, 0.75])).toFixed(3)), V1: pick(r, [1, 1.5, 2, 2.5]) };
+      const D1 = range(r, 0.05, 0.5, 0.01);
+      return { D1, D2: Number((D1 * range(r, 0.3, 0.85, 0.05)).toFixed(3)), V1: range(r, 0.5, 4, 0.1) };
     },
     build: ({ D1, D2, V1 }) => {
       const V2 = V1 * (D1 / D2) ** 2;
@@ -604,10 +623,10 @@ const TEMPLATES = [
     title: '직관의 마찰 손실 (Darcy–Weisbach)',
     defaults: { L: 100, D: 0.1, V: 2, f: 0.02 },
     vary: (r) => ({
-      L: pick(r, [50, 100, 200, 500]),
-      D: pick(r, [0.05, 0.1, 0.15, 0.2]),
-      V: pick(r, [1, 1.5, 2, 3]),
-      f: pick(r, [0.015, 0.02, 0.025, 0.03]),
+      L: range(r, 10, 1000, 10),
+      D: range(r, 0.02, 0.5, 0.01),
+      V: range(r, 0.3, 4, 0.1),
+      f: range(r, 0.01, 0.05, 0.001),
     }),
     build: ({ L, D, V, f }) => {
       const hL = (f * (L / D) * V ** 2) / (2 * G);
@@ -633,7 +652,7 @@ const TEMPLATES = [
     topic: '부력',
     title: '물에 뜬 나무토막',
     defaults: { a: 0.5, b: 0.4, c: 0.2, rho: 600 },
-    vary: (r) => ({ a: pick(r, [0.4, 0.5, 0.6]), b: pick(r, [0.3, 0.4]), c: pick(r, [0.1, 0.2, 0.3]), rho: pick(r, [500, 600, 700, 800]) }),
+    vary: (r) => ({ a: range(r, 0.2, 1.5, 0.05), b: range(r, 0.1, 1, 0.05), c: range(r, 0.05, 0.5, 0.01), rho: range(r, 300, 950, 10) }),
     build: ({ a, b, c, rho }) => {
       const V = a * b * c;
       const FB = rho * V * G;
@@ -659,7 +678,7 @@ const TEMPLATES = [
     topic: '진동',
     title: '1자유도 스프링-질량계의 고유진동',
     defaults: { m: 2, k: 800 },
-    vary: (r) => ({ m: pick(r, [0.5, 1, 2, 4, 5]), k: pick(r, [200, 500, 800, 1000, 2000]) }),
+    vary: (r) => ({ m: range(r, 0.2, 20, 0.1), k: range(r, 50, 10000, 50) }),
     build: ({ m, k }) => {
       const wn = sqrt(k / m);
       const fn = wn / (2 * PI);
@@ -689,7 +708,7 @@ const TEMPLATES = [
     topic: '에너지 보존',
     title: '자유낙하와 에너지 보존',
     defaults: { m: 2, h: 5 },
-    vary: (r) => ({ m: pick(r, [1, 2, 5]), h: pick(r, [2, 3, 5, 10, 20]) }),
+    vary: (r) => ({ m: range(r, 0.5, 20, 0.5), h: range(r, 1, 100, 0.5) }),
     build: ({ m, h }) => {
       const v = sqrt(2 * G * h);
       const t = sqrt((2 * h) / G);
@@ -712,11 +731,13 @@ const TEMPLATES = [
     title: '감쇠 1자유도계',
     defaults: { m: 2, k: 800, c: 16 },
     vary: (r) => {
-      const m = pick(r, [1, 2, 4, 5]);
-      const k = pick(r, [500, 800, 1000, 2000]);
-      const zeta = pick(r, [0.05, 0.1, 0.2, 0.3, 0.5]);
+      const m = range(r, 0.5, 20, 0.5);
+      const k = range(r, 100, 10000, 50);
+      const zeta = range(r, 0.02, 0.8, 0.01);
       return { m, k, c: Math.round(2 * zeta * sqrt(k * m) * 10) / 10 };
     },
+    // c를 반올림한 뒤에도 부족감쇠(0 < ζ < 1)인지 확인한다.
+    valid: ({ m, k, c }) => c > 0 && c / (2 * sqrt(k * m)) < 1,
     build: ({ m, k, c }) => {
       const cc = 2 * sqrt(k * m);
       const zeta = c / cc;
@@ -742,7 +763,7 @@ const TEMPLATES = [
     topic: '원운동',
     title: '평탄한 커브를 도는 자동차',
     defaults: { r: 50, kmh: 72 },
-    vary: (rng) => ({ r: pick(rng, [60, 80, 100, 120, 150]), kmh: pick(rng, [40, 50, 60, 72, 80]) }),
+    vary: (rng) => ({ r: range(rng, 20, 300, 5), kmh: range(rng, 20, 120, 5) }),
     valid: ({ r, kmh }) => (kmh / 3.6) ** 2 / (r * G) <= 1,
     build: ({ r, kmh }) => {
       const v = kmh / 3.6;
@@ -767,7 +788,7 @@ const TEMPLATES = [
     topic: '강체 회전',
     title: '플라이휠의 회전 운동에너지',
     defaults: { m: 20, R: 0.3, n: 3000 },
-    vary: (r) => ({ m: pick(r, [10, 20, 30, 50]), R: pick(r, [0.2, 0.25, 0.3, 0.4]), n: pick(r, [1000, 1500, 2000, 3000, 3600]) }),
+    vary: (r) => ({ m: range(r, 2, 100, 1), R: range(r, 0.1, 0.8, 0.01), n: range(r, 300, 6000, 50) }),
     build: ({ m, R, n }) => {
       const I = 0.5 * m * R ** 2;
       const w = (n * 2 * PI) / 60;

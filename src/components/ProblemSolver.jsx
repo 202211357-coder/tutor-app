@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 import { getProblems, peekProblems } from '../lib/problemCache.js';
 import { penMark, teacherComment } from '../lib/teacher.js';
-import { fetchDifferentVariant } from '../lib/variants.js';
+import { fetchDifferentVariant, rememberRecent } from '../lib/variants.js';
 
 const STATUS_LABEL = {
   correct: '정답',
@@ -32,10 +32,12 @@ function ProblemCard({ number, baseProblem, renumber, resetToken, bestPercent, o
   const [hintCount, setHintCount] = useState(0);
   const [solution, setSolution] = useState(null);
   const problemRef = useRef(baseProblem);
+  const recentRef = useRef([baseProblem]); // 최근에 보여 준 문제 (같은 수치 반복 방지)
   const requestId = useRef(0);
 
   function show(next) {
     problemRef.current = next;
+    recentRef.current = rememberRecent(recentRef.current, next);
     setProblem(next);
     setAnswers({});
     setResult(null);
@@ -51,7 +53,7 @@ function ProblemCard({ number, baseProblem, renumber, resetToken, bestPercent, o
     setLoading(true);
     setError('');
     try {
-      const next = await fetchDifferentVariant(api.fetchProblemVariant, problemRef.current);
+      const next = await fetchDifferentVariant(api.fetchProblemVariant, problemRef.current, { recent: recentRef.current });
       if (id === requestId.current) show(next);
     } catch (err) {
       if (id === requestId.current) setError(`새 문제를 불러오지 못했습니다: ${err.message}`);

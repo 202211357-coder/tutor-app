@@ -9,19 +9,27 @@ export function sameNumbers(a, b) {
   );
 }
 
+/** 카드마다 기억하는 최근 문제 수 (이 안에서는 같은 수치가 다시 나오지 않는다) */
+export const RECENT_LIMIT = 10;
+
 /**
- * 지금 보이는 문제와 수치가 다른 변형 문제를 받아 온다.
- * 수치 조합이 적은 문제는 무작위 seed가 같은 수치를 낼 수 있어(최대 약 20%), 같으면 다시 뽑는다.
+ * 지금 보이는 문제, 그리고 최근에 보여 준 문제들과 수치가 다른 변형 문제를 받아 온다.
  * @param {(problemId: string, seed: number) => Promise<object>} fetchVariant
  * @param {object} current 지금 보이는 문제
- * @param {{attempts?: number, nextSeed?: () => number}} [options]
+ * @param {{recent?: object[], attempts?: number, nextSeed?: () => number}} [options]
  */
-export async function fetchDifferentVariant(fetchVariant, current, { attempts = 8, nextSeed = randomSeed } = {}) {
+export async function fetchDifferentVariant(fetchVariant, current, { recent = [], attempts = 8, nextSeed = randomSeed } = {}) {
+  const avoid = [current, ...recent];
   let candidate = null;
   for (let i = 0; i < attempts; i++) {
     candidate = await fetchVariant(current.id, nextSeed());
-    if (!sameNumbers(candidate, current)) return candidate;
+    if (!avoid.some((p) => sameNumbers(candidate, p))) return candidate;
   }
-  // 조합이 하나뿐인 극단적인 경우: 마지막 결과를 그대로 쓴다.
+  // 시도 횟수를 다 쓴 극단적인 경우: 마지막 결과를 그대로 쓴다 (무한 반복 방지).
   return candidate;
+}
+
+/** 최근 목록에 문제를 추가하고 최대 개수를 넘으면 오래된 것부터 버린다. */
+export function rememberRecent(recent, problem, limit = RECENT_LIMIT) {
+  return [...recent.filter((p) => !sameNumbers(p, problem)), problem].slice(-limit);
 }
