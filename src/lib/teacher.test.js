@@ -18,12 +18,12 @@ describe('tipOfTheDay', () => {
 
 describe('teacherComment', () => {
   it.each([
-    [100, '완벽'],
-    [70, '거의 다'],
-    [99.9, '거의 다'],
+    [100, '정답입니다'],
+    [70, '대부분'],
+    [99.9, '대부분'],
     [40, '방향은'],
     [69.9, '방향은'],
-    [10, '풀이를'],
+    [10, '핵심 개념'],
     [0, '첫 번째 힌트'],
   ])('%d점 → "%s"', (percent, phrase) => {
     expect(teacherComment(percent)).toContain(phrase);
@@ -31,6 +31,14 @@ describe('teacherComment', () => {
 
   it('0점이어도 "시작 전" 같은 말은 하지 않는다 (답을 냈는데 틀린 경우)', () => {
     expect(teacherComment(0)).not.toContain('시작 전');
+  });
+
+  it('반말·감탄형(~요!, ~봐요) 대신 존댓말 평서형으로 쓴다', () => {
+    for (const p of [0, 10, 40, 70, 100]) {
+      const text = teacherComment(p);
+      expect(text).not.toMatch(/!|봐요|해요\./);
+      expect(text.endsWith('.')).toBe(true);
+    }
   });
 });
 

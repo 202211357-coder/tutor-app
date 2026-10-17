@@ -52,7 +52,7 @@ export default function TutorChat({ subjectId }) {
       <ol className="messages">
         {messages.map((m, i) => (
           <li key={i} className={`message ${m.role}`}>
-            <strong>{m.role === 'user' ? '나' : '선생님'}</strong>
+            <strong>{m.role === 'user' ? '나' : '튜터'}</strong>
             {m.hasImage && <span className="badge">이미지 첨부</span>}
             <p>{m.content}</p>
             {m.truncated && <p className="notice">답변이 길어 중간에 잘렸습니다.</p>}

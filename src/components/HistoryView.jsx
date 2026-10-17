@@ -10,9 +10,9 @@ function formatTime(iso) {
 
 /**
  * 학습 기록: 과목별 진도, 다시 풀어 볼 문제, 최근 채점.
- * @param {{onOpenSubject: (subjectId: string) => void}} props
+ * @param {{active?: boolean, onOpenSubject: (subjectId: string) => void}} props
  */
-export default function HistoryView({ onOpenSubject }) {
+export default function HistoryView({ active = true, onOpenSubject }) {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState('');
 
@@ -24,7 +24,10 @@ export default function HistoryView({ onOpenSubject }) {
       .catch((err) => setError(err.message));
   }
 
-  useEffect(load, []);
+  // 탭이 보일 때마다 새로 집계하되, 받는 동안에는 이전 내용을 그대로 보여 준다(깜빡임 방지).
+  useEffect(() => {
+    if (active) load();
+  }, [active]);
 
   async function handleClear() {
     if (!window.confirm('모든 학습 기록을 지울까요? 되돌릴 수 없습니다.')) return;
@@ -37,19 +40,19 @@ export default function HistoryView({ onOpenSubject }) {
   }
 
   if (error) return <p className="error">학습 기록을 불러오지 못했습니다: {error}</p>;
-  if (!summary) return <p>불러오는 중…</p>;
+  if (!summary) return <div className="report-card skeleton" aria-label="학습 현황을 불러오는 중" />;
   if (summary.totalAttempts === 0) {
     return (
       <section className="history report-card">
-        <h2 className="report-title">성적표</h2>
-        <p>아직 기록이 없습니다. 연습 문제를 채점받으면 여기에 자동으로 쌓여요.</p>
+        <h2 className="report-title">학습 현황</h2>
+        <p>아직 기록이 없습니다. 연습 문제를 채점하면 자동으로 기록됩니다.</p>
       </section>
     );
   }
 
   return (
     <section className="history report-card">
-      <h2 className="report-title">성적표</h2>
+      <h2 className="report-title">학습 현황</h2>
       <h3>과목별 진도</h3>
       <table className="progress-table">
         <thead>
@@ -83,7 +86,7 @@ export default function HistoryView({ onOpenSubject }) {
 
       <h3>다시 풀어 볼 문제</h3>
       {summary.toReview.length === 0 ? (
-        <p className="teacher-note">풀어 본 문제를 모두 만점으로 통과했어요. 참 잘했어요!</p>
+        <p className="teacher-note">시도한 문제를 모두 만점으로 통과했습니다.</p>
       ) : (
         <ul className="review-list">
           {summary.toReview.map((r) => (
