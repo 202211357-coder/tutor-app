@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './lib/api.js';
 import { prefetchProblems } from './lib/problemCache.js';
-import { tipOfTheDay } from './lib/teacher.js';
+import { GENERAL_NOTES_KEY, lectureNote } from './lib/teacher.js';
 import HistoryView from './components/HistoryView.jsx';
 import ProfessorIcon from './components/ProfessorIcon.jsx';
 import ProblemSolver from './components/ProblemSolver.jsx';
@@ -56,6 +56,11 @@ export default function App() {
   const subjectViews = !subjectId || visitedSubjects.includes(subjectId) ? visitedSubjects : [...visitedSubjects, subjectId];
   const tabViews = visitedTabs.includes(activeTab) ? visitedTabs : [...visitedTabs, activeTab];
 
+  // 과목 탭에서는 그 과목의 노트, 학습 현황에서는 공통 노트. 오늘의 노트를 모두 같은 자리에 겹쳐 두고
+  // 보이는 것만 바꾸므로, 과목을 바꿔도 말풍선 크기(칠판 높이)가 변하지 않는다.
+  const noteKey = activeTab === 'history' || !subject ? GENERAL_NOTES_KEY : subject.id;
+  const notes = [{ key: GENERAL_NOTES_KEY, label: '공통' }, ...subjects.map((s) => ({ key: s.id, label: s.name }))];
+
   return (
     <div className="classroom">
       <header className="chalkboard">
@@ -66,8 +71,20 @@ export default function App() {
           </div>
           <div className="teacher">
             <p className="speech">
-              <strong>오늘의 강의 노트</strong>
-              {tipOfTheDay()}
+              <strong>
+                오늘의 강의 노트 · {notes.find((n) => n.key === noteKey)?.label}
+              </strong>
+              <span className="speech-notes">
+                {notes.map((n) => (
+                  <span
+                    key={n.key}
+                    className={n.key === noteKey ? 'speech-note fade-in' : 'speech-note'}
+                    aria-hidden={n.key !== noteKey}
+                  >
+                    {lectureNote(n.key)}
+                  </span>
+                ))}
+              </span>
             </p>
             <ProfessorIcon />
           </div>

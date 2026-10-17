@@ -1,18 +1,66 @@
 import { describe, expect, it } from 'vitest';
-import { penMark, randomSeed, teacherComment, tipOfTheDay, TIPS } from './teacher.js';
+import { SUBJECTS } from '../../shared/subjects.js';
+import {
+  GENERAL_NOTES_KEY,
+  LECTURE_NOTES,
+  lectureNote,
+  penMark,
+  randomSeed,
+  teacherComment,
+  tipOfTheDay,
+} from './teacher.js';
 
 describe('tipOfTheDay', () => {
+  const general = LECTURE_NOTES[GENERAL_NOTES_KEY];
+
   it('같은 날에는 같은 문구, 다음 날에는 다음 문구', () => {
     const morning = new Date(2026, 9, 17, 8, 0);
     const night = new Date(2026, 9, 17, 23, 59);
     const tomorrow = new Date(2026, 9, 18, 8, 0);
     expect(tipOfTheDay(morning)).toBe(tipOfTheDay(night));
-    const i = TIPS.indexOf(tipOfTheDay(morning));
-    expect(tipOfTheDay(tomorrow)).toBe(TIPS[(i + 1) % TIPS.length]);
+    const i = general.indexOf(tipOfTheDay(morning));
+    expect(tipOfTheDay(tomorrow)).toBe(general[(i + 1) % general.length]);
   });
 
   it('항상 목록 안의 문구를 돌려준다', () => {
-    for (let d = 0; d < 30; d++) expect(TIPS).toContain(tipOfTheDay(new Date(2026, 0, 1 + d)));
+    for (let d = 0; d < 30; d++) expect(general).toContain(tipOfTheDay(new Date(2026, 0, 1 + d)));
+  });
+});
+
+describe('lectureNote', () => {
+  it('과목 5개 모두 전용 노트가 있다', () => {
+    expect(Object.keys(LECTURE_NOTES).sort()).toEqual([...SUBJECTS.map((s) => s.id), GENERAL_NOTES_KEY].sort());
+  });
+
+  it.each(Object.keys(LECTURE_NOTES))('%s: 노트가 10개 이상이고 중복이 없다', (key) => {
+    const notes = LECTURE_NOTES[key];
+    expect(notes.length).toBeGreaterThanOrEqual(10);
+    expect(new Set(notes).size).toBe(notes.length);
+  });
+
+  it('노트 문구는 과목끼리도 겹치지 않는다', () => {
+    const all = Object.values(LECTURE_NOTES).flat();
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it('과목마다 그 과목의 노트를 고르고, 같은 날에는 바뀌지 않는다', () => {
+    const morning = new Date(2026, 9, 17, 8, 0);
+    const night = new Date(2026, 9, 17, 23, 59);
+    for (const { id } of SUBJECTS) {
+      expect(LECTURE_NOTES[id]).toContain(lectureNote(id, morning));
+      expect(lectureNote(id, night)).toBe(lectureNote(id, morning));
+    }
+  });
+
+  it('열흘 동안 매일 다른 노트가 나온다', () => {
+    const seen = new Set();
+    for (let d = 0; d < 10; d++) seen.add(lectureNote('statics', new Date(2026, 9, 1 + d)));
+    expect(seen.size).toBe(10);
+  });
+
+  it('모르는 과목이면 공통 노트를 쓴다', () => {
+    expect(LECTURE_NOTES[GENERAL_NOTES_KEY]).toContain(lectureNote('unknown'));
+    expect(LECTURE_NOTES[GENERAL_NOTES_KEY]).toContain(lectureNote(GENERAL_NOTES_KEY));
   });
 });
 

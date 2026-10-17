@@ -145,6 +145,18 @@ body {
   border-right: 0;
 }
 
+.speech-notes {
+  display: grid;
+}
+
+.speech-note {
+  grid-area: 1 / 1;
+}
+
+.speech-note[aria-hidden='true'] {
+  visibility: hidden;
+}
+
 .speech strong {
   display: block;
   font-family: var(--serif);
