@@ -38,7 +38,7 @@ function result(status, ratio, maxPoints, feedback, extra = {}) {
 /**
  * 소문항 하나를 채점한다.
  * @param {string|null|undefined} rawAnswer 학생 답안 문자열 (예: "12.5 kN")
- * @param {{answer: {value: number, unit?: string}, points?: number, tolerance?: number, partialTolerance?: number}} part
+ * @param {{answer: {value: number, unit?: string}, points?: number, tolerance?: number, partialTolerance?: number, wrongFeedback?: string}} part
  */
 export function gradePart(rawAnswer, part) {
   const maxPoints = part.points ?? 1;
@@ -131,7 +131,7 @@ export function gradePart(rawAnswer, part) {
       extra,
     );
   }
-  return result(GRADE_STATUS.WRONG, 0, maxPoints, '오답입니다.', extra);
+  return result(GRADE_STATUS.WRONG, 0, maxPoints, part.wrongFeedback ?? '오답입니다.', extra);
 }
 
 /**

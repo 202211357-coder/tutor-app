@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gradeProblem } from './grading.js';
+import { gradePart, gradeProblem } from './grading.js';
 import {
   createRng,
   findProblem,
@@ -130,6 +130,44 @@ const RECOMPUTED = {
     const K = 31 / 28 + 0.615 / 8;
     return { '(a)': 8, '(b)': (K * 8 * 300 * 48) / (PI * 216), '(c)': (8 * 10 * 48 ** 3 * 300) / (80000 * 6 ** 4) };
   })(),
+  // ───── 기계설계 설계형 (기본 수치, 손 계산 순서 그대로) ─────
+  'sizing-power-screw': (() => {
+    // d₁ ≥ √(4·50000/(π·40)) = 39.89 → 골지름 42 (50×8)
+    const lam = Math.atan(8 / (PI * 46));
+    const T = 50000 * 0.023 * Math.tan(lam + Math.atan(0.1));
+    return { '(a)': sqrt(200000 / (PI * 40)), '(b)': 50, '(c)': T / 0.6 };
+  })(),
+  // 25.23 mm → M30 (d₁ 26.211)
+  'sizing-bolt': { '(a)': sqrt(120000 / (PI * 60)), '(b)': 30, '(c)': 300 / (120000 / (PI * 26.211 ** 2)) },
+  // 16.52 mm → 18 mm, p ≥ 18 + 15000/(110·10)
+  'sizing-rivet': { '(a)': sqrt(60000 / (PI * 70)), '(b)': 18, '(c)': 18 + 15000 / 1100 },
+  // 키 14 × 9, F = 24000 N
+  'sizing-key': { '(a)': 24000 / (14 * 40), '(b)': 24000 / (4.5 * 90), '(c)': 63 },
+  'sizing-shaft': (() => {
+    const Te = Math.hypot(300, 15000 / (20 * PI));
+    return { '(a)': Math.cbrt((16 * Te) / (PI * 40e6)) * 1000, '(b)': 40, '(c)': (16 * Te) / (PI * 0.04 ** 3) / 1e6 };
+  })(),
+  'sizing-coupling': (() => {
+    const T = 60000 / ((2 * PI * 500) / 60);
+    return { '(a)': T, '(b)': sqrt((8 * T * 1000) / (PI * 6 * 160 * 25)), '(c)': 12, '(d)': (8 * T * 1000) / (PI * 6 * 160 * 144) };
+  })(),
+  'sizing-bearing': { '(a)': 2.5 * Math.cbrt(1800), '(b)': 33.5, '(c)': ((33.5 / 2.5) ** 3 * 1e6) / 90000 },
+  'sizing-friction-wheel': (() => {
+    const Q = 3000 / (0.25 * ((PI * 0.3 * 800) / 60));
+    return { '(a)': Q, '(b)': Q / 20, '(c)': 50 };
+  })(),
+  'sizing-spur-gear': (() => {
+    const m3 = (60000 * 7500) / (PI * 20 * 1200 * 10 * 0.322 * 110);
+    const F = 7500 / ((PI * 3 * 20 * 1200) / 60000);
+    return { '(a)': Math.cbrt(m3), '(b)': 3, '(c)': F / (30 * 3 * 0.322) };
+  })(),
+  'sizing-flat-belt': (() => {
+    const e = Math.exp((0.3 * 165 * PI) / 180);
+    const T1 = (500 * e) / (e - 1);
+    return { '(a)': T1, '(b)': T1 / 10, '(c)': 90 };
+  })(),
+  'sizing-block-brake': { '(a)': 2500, '(b)': (2500 * 150) / 200, '(c)': 1900 },
+  'sizing-spring': { '(a)': (80000 * 256 * 30) / (8 * 32768 * 200), '(b)': 12, '(c)': (8 * 12 * 32768 * 200) / (80000 * 256) },
 };
 
 describe('문제 데이터 구조', () => {
@@ -365,6 +403,80 @@ const FORMULAS = {
     const k = (80e3 * d ** 4) / (8 * n * D ** 3); // N/mm
     return { '(a)': C, '(b)': (K * 8 * W * C) / (PI * d * d), '(c)': W / k };
   },
+  // ───── 기계설계 설계형: 필요값 → 목록에서 필요값 이상 최솟값 → 재검토 ─────
+  'sizing-power-screw': ({ W, sa, mu, L }) => {
+    const need = sqrt((4000 * W) / (PI * sa));
+    const [d, p] = [[22, 5], [26, 5], [30, 6], [36, 6], [40, 7], [46, 8], [50, 8], [56, 9], [62, 10]].filter(([a, b]) => a - b >= need)[0];
+    const d2 = d - p / 2;
+    const force = (W * 1e3 * (p + mu * PI * d2)) / (PI * d2 - mu * p); // 경사면 모델
+    return { '(a)': need, '(b)': d, '(c)': (force * d2) / 2 / L };
+  },
+  'sizing-bolt': ({ W, sa, sy }) => {
+    const need = sqrt((4000 * W) / (PI * sa));
+    const [d, d1] = [[10, 8.376], [12, 10.106], [16, 13.835], [20, 17.294], [24, 20.752], [30, 26.211], [36, 31.67]].filter(([, x]) => x >= need)[0];
+    return { '(a)': need, '(b)': d, '(c)': (sy * PI * d1 * d1) / (4000 * W) };
+  },
+  'sizing-rivet': ({ t, W, ta, sta }) => {
+    const need = sqrt((4000 * W) / (PI * ta));
+    const d = [10, 12, 14, 16, 18, 20, 22, 24, 27, 30].filter((x) => x >= need)[0];
+    return { '(a)': need, '(b)': d, '(c)': (W * 1e3 + d * sta * t) / (sta * t) };
+  },
+  'sizing-key': ({ d, b, h, T, ta, sca }) => {
+    const F = T / (d / 2000);
+    const need = Math.max(F / (b * ta), (2 * F) / (h * sca));
+    const lengths = [14, 16, 18, 20, 22, 25, 28, 32, 36, 40, 45, 50, 56, 63, 70, 80, 90, 100, 110, 125, 140, 160, 180, 200];
+    return { '(a)': F / (b * ta), '(b)': (2 * F) / (h * sca), '(c)': lengths.filter((x) => x >= need)[0] };
+  },
+  'sizing-shaft': ({ P, n, M, ta }) => {
+    const T = (P * 1e3 * 60) / (2 * PI * n);
+    const Te = Math.hypot(M, T);
+    const need = ((16 * Te) / (PI * ta * 1e6)) ** (1 / 3) * 1000;
+    const sizes = [20, 22, 25, 28, 30, 32, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 110, 120];
+    const d = sizes.filter((x) => x >= need)[0];
+    return { '(a)': need, '(b)': d, '(c)': ta * (need / d) ** 3 };
+  },
+  'sizing-coupling': ({ P, n, Db, z, ta }) => {
+    const T = (P * 1e3 * 60) / (2 * PI * n);
+    const need = sqrt((8 * T * 1e3) / (PI * z * Db * ta));
+    const delta = [8, 10, 12, 16, 20, 24, 30].filter((x) => x >= need)[0];
+    return { '(a)': T, '(b)': need, '(c)': delta, '(d)': ta * (need / delta) ** 2 };
+  },
+  'sizing-bearing': ({ P, n, Lt }) => {
+    const need = P * ((60 * n * Lt) / 1e6) ** (1 / 3);
+    const C = [7.8, 10.1, 13.3, 17.8, 22.5, 29.6, 33.5, 41, 52.7, 63.7, 77, 92.6].filter((x) => x >= need)[0];
+    return { '(a)': need, '(b)': C, '(c)': Lt * (C / need) ** 3 };
+  },
+  'sizing-friction-wheel': ({ P, D1, n1, mu, f }) => {
+    const v = (D1 / 2000) * ((2 * PI * n1) / 60);
+    const Q = (P * 1e3) / (mu * v);
+    return { '(a)': Q, '(b)': Q / f, '(c)': [10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 120, 150].filter((x) => x >= Q / f)[0] };
+  },
+  'sizing-spur-gear': ({ P, Z1, n1, k, sa }) => {
+    const Y = { 17: 0.303, 18: 0.309, 19: 0.314, 20: 0.322, 21: 0.328, 22: 0.331, 24: 0.337, 26: 0.346, 28: 0.353, 30: 0.359, 34: 0.371, 38: 0.384 }[Z1];
+    const need = ((60000 * P * 1e3) / (PI * Z1 * n1 * k * Y * sa)) ** (1 / 3);
+    const m = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].filter((x) => x >= need)[0];
+    return { '(a)': need, '(b)': m, '(c)': sa * (need / m) ** 3 };
+  },
+  'sizing-flat-belt': ({ P, v, mu, theta, t, sa }) => {
+    const T2overT1 = Math.exp((-mu * theta * PI) / 180);
+    const T1 = (P * 1e3) / v / (1 - T2overT1);
+    const widths = [20, 25, 32, 40, 50, 63, 71, 80, 90, 100, 112, 125, 140, 160, 180, 200, 224, 250];
+    return { '(a)': T1, '(b)': T1 / (sa * t), '(c)': widths.filter((x) => x >= T1 / (sa * t))[0] };
+  },
+  'sizing-block-brake': ({ T, D, mu, b, Fmax }) => {
+    const N = T / (mu * (D / 2000));
+    const amin = (N * b) / Fmax;
+    let a = 0;
+    while (a < amin) a += 50;
+    return { '(a)': N, '(b)': amin, '(c)': a };
+  },
+  'sizing-spring': ({ W, delta, d, D }) => {
+    const k1 = (80e3 * d ** 4) / (8 * D ** 3 * W); // 감김 1권당 처짐의 역수 꼴
+    const need = k1 * delta;
+    let n = 0;
+    while (n < need) n += 0.5;
+    return { '(a)': need, '(b)': n, '(c)': (delta * n) / need };
+  },
 };
 
 /** 화면에 보이는 "4.167 × 10⁶"을 학생이 키보드로 치는 형태 "4.167×10^6"으로 바꾼다. */
@@ -452,6 +564,12 @@ describe('변형 문제 (숫자 바꾸기)', () => {
     ['design-helical-spring', (i) => i.parts[0].answer.value >= 4 && i.parts[0].answer.value <= 12],
     ['design-block-brake', (i) => i.params.b <= i.params.a / 2 && i.parts[2].answer.value <= 1],
     ['design-flat-belt', (i) => i.params.theta <= 180],
+    ['sizing-shaft', (i) => i.parts[2].answer.value <= i.params.ta],
+    ['sizing-bolt', (i) => i.parts[2].answer.value >= 2],
+    ['sizing-bearing', (i) => i.parts[2].answer.value >= i.params.Lt],
+    ['sizing-spur-gear', (i) => i.parts[2].answer.value <= i.params.sa],
+    ['sizing-spring', (i) => i.parts[2].answer.value >= i.params.delta],
+    ['sizing-block-brake', (i) => i.parts[2].answer.value >= i.parts[1].answer.value],
   ])('%s: 변형 문제도 물리적 가정(탄성 범위·박육·정지·부족감쇠·세장비·규격 범위 등)을 지킨다', (id, check) => {
     for (const seed of SEEDS) expect(check(getProblemInstance(id, seed)), `seed=${seed}`).toBe(true);
   });
@@ -528,6 +646,55 @@ describe('기계설계 문제의 규격 데이터', () => {
       }
     }
     throw new Error(`d = ${d}인 변형 문제를 찾지 못함`);
+  });
+});
+
+describe('설계형 문항 (규격 선정)', () => {
+  const sizing = PROBLEMS.filter((p) => p.kind === 'design');
+
+  it('기계설계의 설계 대상 12개마다 계산형과 설계형이 하나씩 있다', () => {
+    const md = PROBLEMS.filter((p) => p.subjectId === 'machine_design');
+    const topics = [...new Set(md.map((p) => p.topic))];
+    expect(topics).toHaveLength(12);
+    for (const topic of topics) {
+      expect(md.filter((p) => p.topic === topic).map((p) => p.kind).sort(), topic).toEqual(['calc', 'design']);
+    }
+    expect(PROBLEMS.filter((p) => p.subjectId !== 'machine_design').every((p) => p.kind === 'calc')).toBe(true);
+  });
+
+  it('공개 데이터에 문항 유형(kind)이 들어간다', () => {
+    expect(toPublicProblem(findProblem('sizing-shaft')).kind).toBe('design');
+    expect(toPublicProblem(findProblem('statics-cantilever')).kind).toBe('calc');
+  });
+
+  it.each(sizing.map((p) => [p.id]))('%s: 규격 선택 소문항이 정확히 하나 있다', (id) => {
+    const selects = findProblem(id).parts.filter((p) => p.tolerance === 1e-6);
+    expect(selects).toHaveLength(1);
+    expect(selects[0].partialTolerance).toBe(1e-6);
+  });
+
+  it.each(sizing.map((p) => [p.id]))('%s: 필요값이 규격값 경계와 1퍼센트 이상 떨어져 있어 반올림 방식으로 선택이 갈리지 않는다', (id) => {
+    for (const seed of SEEDS) {
+      const inst = getProblemInstance(id, seed);
+      const selIndex = inst.parts.findIndex((p) => p.tolerance === 1e-6);
+      const need = inst.parts[selIndex - 1].answer.value;
+      const chosen = inst.parts[selIndex].answer.value;
+      expect(chosen, `${id} seed=${seed}`).toBeGreaterThan(need);
+      expect((chosen - need) / chosen, `${id} seed=${seed}`).toBeGreaterThanOrEqual(0.01 - 1e-12);
+    }
+  });
+
+  it('규격 선택은 바로 위 규격만 정답이고, 한 단계 크거나 근사값이면 0점이다', () => {
+    const shaft = findProblem('sizing-shaft'); // 필요 36.55 mm → 40 mm
+    const sel = shaft.parts[1];
+    expect(gradePart('40 mm', sel)).toMatchObject({ status: 'correct', earned: sel.points });
+    expect(gradePart('4 cm', sel).status).toBe('correct');
+    expect(gradePart('45 mm', sel)).toMatchObject({ status: 'wrong', earned: 0 });
+    expect(gradePart('35 mm', sel)).toMatchObject({ status: 'wrong', earned: 0 });
+    expect(gradePart('40.5 mm', sel)).toMatchObject({ status: 'wrong', earned: 0 });
+    expect(gradePart('45 mm', sel).feedback).toContain('가장 작은 것');
+    // 계산값 소문항은 기존처럼 1%·5% 기준
+    expect(gradePart('37.5 mm', shaft.parts[0]).status).toBe('close');
   });
 });
 
