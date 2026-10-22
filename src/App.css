@@ -611,6 +611,17 @@ button:disabled {
   color: var(--accent);
 }
 
+.kind-chip {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  vertical-align: middle;
+  background: var(--board);
+  color: var(--chalk);
+}
+
 .best-badge {
   border: 1.5px solid currentColor;
   color: var(--partial);

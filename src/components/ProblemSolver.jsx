@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/client.js';
 import { getProblems, peekProblems } from '../lib/problemCache.js';
-import { pickProblemSet } from '../lib/problemSet.js';
+import { KIND_FILTERS, pickProblemsByTopic } from '../lib/problemSet.js';
 import { penMark, teacherComment } from '../lib/teacher.js';
 import { fetchDifferentVariant, rememberRecent } from '../lib/variants.js';
 
@@ -111,6 +111,7 @@ function ProblemCard({ number, baseProblem, renumber, resetToken, bestPercent, o
         <h3>{baseProblem.title}</h3>
         <div className="chips">
           {baseProblem.topic && <span className="topic-chip">{baseProblem.topic}</span>}
+          {baseProblem.kind === 'design' && <span className="kind-chip">설계형</span>}
           {isVariant && <span className="variant-chip">수치 변경됨</span>}
           {bestPercent !== undefined && (
             <span className={bestPercent >= 100 ? 'best-badge done' : 'best-badge'}>최고 {bestPercent}점</span>
@@ -236,6 +237,7 @@ export default function ProblemSolver({ subjectId, active, setSize }) {
   const [variantIds, setVariantIds] = useState([]);
   const [deal, setDeal] = useState(null); // 문제 세트: { n, problems }
   const [dealing, setDealing] = useState(false);
+  const [kindFilter, setKindFilter] = useState('mixed');
   const dealRecent = useRef(new Map()); // 대상별로 최근에 낸 수치 (다시 뽑혀도 같은 수치를 피함)
   const dealStarted = useRef(false);
 
@@ -257,15 +259,11 @@ export default function ProblemSolver({ subjectId, active, setSize }) {
       .catch((err) => setError(err.message));
   }, [subjectId]);
 
-  async function dealNewSet(list = problems, previous = deal?.problems ?? []) {
+  async function dealNewSet(list = problems, previous = deal?.problems ?? [], kind = kindFilter) {
     setDealing(true);
     setError('');
     try {
-      const ids = pickProblemSet(
-        list.map((p) => p.id),
-        setSize,
-        previous.map((p) => p.id),
-      );
+      const ids = pickProblemsByTopic(list, setSize, { previous: previous.map((p) => p.id), kind });
       const next = await Promise.all(
         ids.map((id) => {
           const recent = dealRecent.current.get(id) ?? [list.find((p) => p.id === id)];
@@ -308,10 +306,28 @@ export default function ProblemSolver({ subjectId, active, setSize }) {
             {dealing ? '출제 중…' : '새 문제 세트'}
           </button>
           <button type="button" className="ghost-button" onClick={() => setRenumber((r) => ({ n: r.n + 1, ids: dealtIds }))}>
-            같은 대상, 수치만 변경
+            같은 문제, 수치만 변경
           </button>
+          <label className="topic-filter">
+            문항 유형
+            <select
+              value={kindFilter}
+              disabled={dealing}
+              onChange={(e) => {
+                setKindFilter(e.target.value);
+                dealNewSet(problems, deal.problems, e.target.value);
+              }}
+            >
+              {KIND_FILTERS.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <p className="set-info">
-            설계 대상 {problems.length}개 중 {deal.problems.length}개 출제 · {deal.problems.map((p) => p.topic).join(' · ')}
+            설계 대상 {new Set(problems.map((p) => p.topic)).size}개 중 {deal.problems.length}개 출제 ·{' '}
+            {deal.problems.map((p) => (p.kind === 'design' ? `${p.topic}(설계)` : p.topic)).join(' · ')}
           </p>
         </div>
         <div className={dealing ? 'problem-set is-loading' : 'problem-set'} aria-busy={dealing}>
