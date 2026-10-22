@@ -68,6 +68,32 @@ const FLUIDS = [
   { fluid: '기름', rho: 850 },
 ];
 
+// 미터 보통나사 [mm]. 골지름은 암나사 골지름 D₁ = d − 1.0825p (ISO 기본 치수)를 쓴다.
+const BOLT_SIZES = [
+  { size: 'M12', d: 12, d1: 10.106, p: 1.75 },
+  { size: 'M16', d: 16, d1: 13.835, p: 2 },
+  { size: 'M20', d: 20, d1: 17.294, p: 2.5 },
+  { size: 'M24', d: 24, d1: 20.752, p: 3 },
+  { size: 'M30', d: 30, d1: 26.211, p: 3.5 },
+];
+
+// 평행키 단면 폭 b × 높이 h [mm]. 축 지름 구간(앞 값 초과 ~ 이 값 이하)별 표준 치수.
+const KEY_SIZES = [
+  [38, 10, 8],
+  [44, 12, 8],
+  [50, 14, 9],
+  [58, 16, 10],
+  [65, 18, 11],
+  [75, 20, 12],
+  [85, 22, 14],
+];
+
+/** 축 지름 d(30 초과 85 이하)에 맞는 평행키 단면 */
+function keyFor(d) {
+  const [, b, h] = KEY_SIZES.find(([max]) => d <= max);
+  return { b, h };
+}
+
 const TEMPLATES = [
   // ───────── 정역학 ─────────
   {
@@ -801,6 +827,488 @@ const TEMPLATES = [
           `I = ½ m R² = 0.5 × ${m} × ${R}² = ${fmt(I)} kg·m²`,
           `ω = ${n} × 2π / 60 = ${fmt(w)} rad/s`,
           `E = ½ I ω² = 0.5 × ${fmt(I)} × ${fmt(w)}² = ${fmt(E * 1000, 5)} J = ${fmt(E)} kJ`,
+        ],
+      };
+    },
+  },
+  // ───────── 기계설계 (설계 대상별 1문제, 과목 화면에서는 무작위 5개 대상을 골라 출제) ─────────
+  {
+    id: 'design-power-screw',
+    subjectId: 'machine_design',
+    topic: '나사',
+    title: '사각나사 잭의 토크와 효율',
+    defaults: { W: 20, d2: 36, p: 6, mu: 0.1 },
+    vary: (r) => ({ W: range(r, 5, 50, 1), d2: range(r, 20, 60, 2), p: range(r, 3, 12, 1), mu: range(r, 0.08, 0.2, 0.01) }),
+    valid: ({ d2, p }) => p / d2 >= 0.08 && p / d2 <= 0.25,
+    build: ({ W, d2, p, mu }) => {
+      const lambda = Math.atan(p / (PI * d2));
+      const rho = Math.atan(mu);
+      const T = W * 1e3 * (d2 / 2000) * tan(lambda + rho);
+      const eta = tan(lambda) / tan(lambda + rho);
+      return {
+        statement: `1줄 사각나사 잭으로 W = ${W} kN의 하중을 들어 올린다. 나사의 유효지름 d₂ = ${d2} mm, 피치 p = ${p} mm, 나사면의 마찰계수 μ = ${mu}이다. 칼라(자리면) 마찰은 무시한다.`,
+        parts: [
+          part('(a)', '리드각 λ', lambda / DEG, '°', 3),
+          part('(b)', '하중을 들어 올리는 데 필요한 토크 T', T, 'N·m', 4),
+          part('(c)', '나사의 효율 η', eta, undefined, 3),
+        ],
+        hints: [
+          '나사산을 유효지름의 원주 πd₂로 펼치면, 리드만큼 올라가는 경사면이 됩니다. 1줄 나사의 리드는 피치와 같습니다.',
+          '마찰은 마찰각 ρ = tan⁻¹μ로 바꿔 경사각에 더해 생각합니다. 들어 올리는 힘은 W·tan(λ + ρ)입니다.',
+          '효율은 마찰이 없을 때 필요한 토크와 실제 토크의 비입니다.',
+        ],
+        solution: [
+          `tan λ = p/(πd₂) = ${p}/(π × ${d2}) = ${fmt(tan(lambda))} → λ = ${fmt(lambda / DEG)}°`,
+          `마찰각 ρ = tan⁻¹(${mu}) = ${fmt(rho / DEG)}°`,
+          `T = W·(d₂/2)·tan(λ + ρ) = ${fmt(W * 1e3)} N × ${fmt(d2 / 2000)} m × tan(${fmt((lambda + rho) / DEG)}°) = ${fmt(T)} N·m`,
+          `η = tan λ / tan(λ + ρ) = ${fmt(tan(lambda))} / ${fmt(tan(lambda + rho))} = ${fmt(eta)} (${fmt(eta * 100, 3)}%)`,
+          lambda < rho
+            ? `λ < ρ이므로 하중을 놓아도 저절로 풀리지 않는다(자립). 자립하는 사각나사의 효율은 50% 미만이다.`
+            : `λ ≥ ρ이므로 자립하지 않는다. 하중을 유지하려면 브레이크나 멈춤 장치가 필요하다.`,
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-bolt-nut',
+    subjectId: 'machine_design',
+    topic: '볼트',
+    title: '축하중을 받는 볼트와 너트 높이',
+    defaults: { ...BOLT_SIZES[2], W: 10, q: 30 },
+    vary: (r) => ({ ...pick(r, BOLT_SIZES), W: range(r, 2, 60, 1), q: range(r, 15, 40, 1) }),
+    valid: ({ d, d1, W, q }) => {
+      const sigma = (W * 1e3) / ((PI * d1 * d1) / 4);
+      const z = (W * 1e3) / ((PI / 4) * (d * d - d1 * d1) * q);
+      return sigma <= 120 && z >= 3 && z <= 12;
+    },
+    build: ({ size, d, d1, p, W, q }) => {
+      const A1 = (PI * d1 * d1) / 4;
+      const sigma = (W * 1e3) / A1;
+      const Abear = (PI / 4) * (d * d - d1 * d1);
+      const z = (W * 1e3) / (Abear * q);
+      const H = z * p;
+      return {
+        statement: `미터 보통나사 ${size} 볼트(바깥지름 d = ${d} mm, 골지름 d₁ = ${d1} mm, 피치 p = ${p} mm)가 축방향 인장하중 W = ${W} kN을 받는다. 너트 나사산의 허용 접촉면압은 q = ${q} MPa이다.`,
+        parts: [
+          part('(a)', '골지름 단면에 생기는 인장응력 σ', sigma, 'MPa', 4),
+          part('(b)', '면압 조건을 만족하는 데 필요한 나사산 수 z (계산값)', z, undefined, 3),
+          part('(c)', '필요한 너트 높이 H', H, 'mm', 3),
+        ],
+        hints: [
+          '볼트는 나사산이 깎인 가장 가는 단면, 즉 골지름 단면에서 먼저 끊어집니다.',
+          '나사산 하나가 하중을 받는 면적은 바깥지름과 골지름 사이의 고리 면적입니다.',
+          '너트 높이는 필요한 나사산 수만큼 피치를 쌓은 길이입니다.',
+        ],
+        solution: [
+          `골지름 단면적 A₁ = πd₁²/4 = π × ${d1}²/4 = ${fmt(A1)} mm²`,
+          `σ = W/A₁ = ${fmt(W * 1e3)} N / ${fmt(A1)} mm² = ${fmt(sigma)} MPa`,
+          `나사산 1개의 접촉 면적 = (π/4)(d² − d₁²) = (π/4)(${d}² − ${d1}²) = ${fmt(Abear)} mm²`,
+          `z = W / [(π/4)(d² − d₁²)·q] = ${fmt(W * 1e3)} / (${fmt(Abear)} × ${q}) = ${fmt(z)} → 실제로는 올림한 정수 개수 이상으로 한다.`,
+          `H = z·p = ${fmt(z)} × ${p} = ${fmt(H)} mm`,
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-riveted-lap-joint',
+    subjectId: 'machine_design',
+    topic: '리벳',
+    title: '1줄 겹치기 리벳 이음의 강도와 효율',
+    defaults: { d: 16, p: 50, t: 10, W: 12 },
+    vary: (r) => ({ d: range(r, 10, 24, 1), p: range(r, 30, 90, 2), t: range(r, 6, 16, 1), W: range(r, 3, 30, 0.5) }),
+    valid: ({ d, p, t, W }) => {
+      const tau = (W * 1e3) / ((PI * d * d) / 4);
+      const sigma = (W * 1e3) / ((p - d) * t);
+      return p >= 2.5 * d && p <= 4.5 * d && tau <= 100 && sigma <= 160;
+    },
+    build: ({ d, p, t, W }) => {
+      const tau = (W * 1e3) / ((PI * d * d) / 4);
+      const sigma = (W * 1e3) / ((p - d) * t);
+      const eta = (p - d) / p;
+      return {
+        statement: `두께 t = ${t} mm인 강판 두 장을 1줄 겹치기 리벳 이음으로 잇는다. 리벳 지름(구멍 지름) d = ${d} mm, 피치 p = ${p} mm이고, 한 피치 폭마다 하중 W = ${W} kN이 작용한다.`,
+        parts: [
+          part('(a)', '리벳의 전단응력 τ', tau, 'MPa', 4),
+          part('(b)', '리벳 구멍 사이 강판의 인장응력 σ_t', sigma, 'MPa', 3),
+          part('(c)', '강판의 효율 η_t', eta, undefined, 3),
+        ],
+        hints: [
+          '한 피치 폭에는 리벳이 1개 있고, 겹치기 이음에서 리벳은 한 단면에서 전단(1면 전단)됩니다.',
+          '강판은 리벳 구멍이 뚫린 단면에서 가장 약합니다. 구멍을 뺀 폭에 두께를 곱해 단면적을 구하세요.',
+          '판의 효율은 구멍 뚫린 판과 구멍 없는 판의 인장 강도 비입니다.',
+        ],
+        solution: [
+          `τ = W / (πd²/4) = ${fmt(W * 1e3)} N / ${fmt((PI * d * d) / 4)} mm² = ${fmt(tau)} MPa`,
+          `σ_t = W / [(p − d)t] = ${fmt(W * 1e3)} / [(${p} − ${d}) × ${t}] = ${fmt(sigma)} MPa`,
+          `η_t = (p − d)/p = (${p} − ${d})/${p} = ${fmt(eta)} (${fmt(eta * 100, 3)}%)`,
+          '실제 설계에서는 리벳 지름 앞 판의 압축(σ_c = W/(dt))과 판 끝의 전단도 함께 검토한다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-sunk-key',
+    subjectId: 'machine_design',
+    topic: '키',
+    title: '묻힘키의 전단응력과 압축응력',
+    defaults: { d: 50, ...keyFor(50), T: 600, l: 70 },
+    vary: (r) => {
+      const d = range(r, 32, 85, 1);
+      return { d, ...keyFor(d), T: range(r, 100, 2500, 10), l: range(r, 30, 150, 5) };
+    },
+    valid: ({ d, b, h, T, l }) => {
+      const F = (2 * T * 1e3) / d;
+      return l >= d && l <= 2.5 * d && F / (b * l) <= 60 && (2 * F) / (h * l) <= 150;
+    },
+    build: ({ d, b, h, T, l }) => {
+      const F = (2 * T * 1e3) / d; // N (T: N·m → N·mm)
+      const tau = F / (b * l);
+      const sigma = (2 * F) / (h * l);
+      return {
+        statement: `지름 d = ${d} mm인 축이 토크 T = ${T} N·m를 묻힘키로 풀리에 전달한다. 키의 폭 b = ${b} mm, 높이 h = ${h} mm, 길이 l = ${l} mm이고, 키는 축과 보스에 높이의 절반씩(h/2) 묻혀 있다.`,
+        parts: [
+          part('(a)', '축 표면(키)에 작용하는 접선력 F', F / 1e3, 'kN', 3),
+          part('(b)', '키의 전단응력 τ', tau, 'MPa', 4),
+          part('(c)', '키 측면의 압축응력 σ_c', sigma, 'MPa', 3),
+        ],
+        hints: [
+          '토크는 축 반지름 위치에서 키를 미는 접선력으로 바뀝니다. 토크와 지름의 단위를 맞추세요.',
+          '키는 축과 보스의 경계면, 즉 폭 b × 길이 l인 면에서 전단됩니다.',
+          '측면 압축은 키가 보스에 묻힌 높이(h/2) × 길이 l인 면이 받습니다.',
+        ],
+        solution: [
+          `F = 2T/d = 2 × ${fmt(T * 1e3)} N·mm / ${d} mm = ${fmt(F)} N = ${fmt(F / 1e3)} kN`,
+          `τ = F/(b·l) = ${fmt(F)} / (${b} × ${l}) = ${fmt(tau)} MPa`,
+          `σ_c = F/[(h/2)·l] = 2F/(h·l) = ${fmt(2 * F)} / (${h} × ${l}) = ${fmt(sigma)} MPa`,
+          '키 재료의 허용 전단응력·허용 압축응력과 비교해 길이 l을 정한다. 보통 압축 쪽이 먼저 한계에 이른다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-shaft-combined',
+    subjectId: 'machine_design',
+    topic: '축',
+    title: '굽힘과 비틀림을 함께 받는 전동축',
+    defaults: { P: 10, n: 500, M: 150, d: 40 },
+    vary: (r) => ({ P: range(r, 1, 100, 0.5), n: range(r, 100, 3000, 50), M: range(r, 20, 3000, 10), d: range(r, 20, 120, 5) }),
+    valid: ({ P, n, M, d }) => {
+      const T = (60 * P * 1e3) / (2 * PI * n);
+      const tau = (16 * sqrt(M * M + T * T)) / (PI * (d / 1000) ** 3) / 1e6;
+      return tau >= 10 && tau <= 60;
+    },
+    build: ({ P, n, M, d }) => {
+      const T = (60 * P * 1e3) / (2 * PI * n);
+      const Te = sqrt(M * M + T * T);
+      const tau = (16 * Te) / (PI * (d / 1000) ** 3) / 1e6;
+      return {
+        statement: `동력 P = ${P} kW를 ${n} rpm으로 전달하는 지름 d = ${d} mm의 중실축이, 같은 단면에서 굽힘모멘트 M = ${M} N·m도 받는다.`,
+        parts: [
+          part('(a)', '전달 토크 T', T, 'N·m', 3),
+          part('(b)', '상당 비틀림 모멘트 Tₑ', Te, 'N·m', 3),
+          part('(c)', '축에 생기는 최대 전단응력 τ_max', tau, 'MPa', 4),
+        ],
+        hints: [
+          '동력 = 토크 × 각속도입니다. rpm을 rad/s로 바꾸세요.',
+          '굽힘과 비틀림이 함께 작용하면 최대 전단응력설로 두 모멘트를 하나의 비틀림 모멘트로 합칩니다.',
+          '중실축의 비틀림 전단응력 공식에 합친 모멘트를 넣습니다. 지름은 m로 바꾸세요.',
+        ],
+        solution: [
+          `ω = 2π × ${n}/60 = ${fmt((2 * PI * n) / 60)} rad/s`,
+          `T = P/ω = ${fmt(P * 1e3)} W / ${fmt((2 * PI * n) / 60)} rad/s = ${fmt(T)} N·m`,
+          `Tₑ = √(M² + T²) = √(${M}² + ${fmt(T)}²) = ${fmt(Te)} N·m`,
+          `τ_max = 16Tₑ/(πd³) = 16 × ${fmt(Te)} / (π × ${fmt(d / 1000)}³) = ${fmt(tau * 1e6, 4)} Pa = ${fmt(tau)} MPa`,
+          '취성 재료라면 최대 주응력설의 상당 굽힘모멘트 Mₑ = (M + Tₑ)/2로 굽힘응력을 함께 검토한다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-flange-coupling',
+    subjectId: 'machine_design',
+    topic: '축이음',
+    title: '플랜지 커플링 볼트의 전단응력',
+    defaults: { P: 30, n: 600, Db: 150, z: 6, delta: 12 },
+    vary: (r) => ({
+      P: range(r, 5, 200, 1),
+      n: range(r, 200, 1800, 50),
+      Db: range(r, 80, 300, 10),
+      z: pick(r, [4, 6, 8]),
+      delta: range(r, 8, 24, 2),
+    }),
+    valid: ({ P, n, Db, z, delta }) => {
+      const T = (60 * P * 1e3) / (2 * PI * n);
+      const tau = (2 * T * 1e3) / (z * Db) / ((PI * delta * delta) / 4);
+      return tau >= 5 && tau <= 50;
+    },
+    build: ({ P, n, Db, z, delta }) => {
+      const T = (60 * P * 1e3) / (2 * PI * n);
+      const F = (2 * T) / (z * (Db / 1000));
+      const tau = F / ((PI * delta * delta) / 4);
+      return {
+        statement: `플랜지 커플링이 ${n} rpm에서 동력 P = ${P} kW를 전달한다. 볼트 ${z}개가 지름 D_B = ${Db} mm인 원 위에 같은 간격으로 배치되어 있고, 볼트 지름은 δ = ${delta} mm이다. 토크는 볼트의 전단만으로 전달되고 모든 볼트가 같은 힘을 받는다고 가정한다.`,
+        parts: [
+          part('(a)', '전달 토크 T', T, 'N·m', 3),
+          part('(b)', '볼트 1개에 걸리는 전단력 F', F, 'N', 3),
+          part('(c)', '볼트의 전단응력 τ', tau, 'MPa', 4),
+        ],
+        hints: [
+          '동력과 회전수로 토크를 먼저 구하세요. rpm은 rad/s로 바꿔야 합니다.',
+          '볼트들은 볼트 원의 반지름 위치에서 접선력을 나눠 받습니다. 볼트 수 × 접선력 × 반지름 = 토크입니다.',
+          '볼트는 두 플랜지 사이의 한 단면에서 전단됩니다.',
+        ],
+        solution: [
+          `T = 60P/(2πn) = 60 × ${fmt(P * 1e3)} / (2π × ${n}) = ${fmt(T)} N·m`,
+          `z·F·(D_B/2) = T → F = 2T/(z·D_B) = 2 × ${fmt(T)} / (${z} × ${fmt(Db / 1000)}) = ${fmt(F)} N`,
+          `τ = F/(πδ²/4) = ${fmt(F)} / ${fmt((PI * delta * delta) / 4)} mm² = ${fmt(tau)} MPa`,
+          '실제 커플링은 볼트 체결력에 의한 플랜지 면 마찰도 토크를 전달하므로, 전단만으로 본 이 계산은 안전 쪽이다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-ball-bearing-life',
+    subjectId: 'machine_design',
+    topic: '베어링',
+    title: '볼 베어링의 수명과 동정격하중',
+    defaults: { C: 30, P: 3, n: 1000, Lt: 20000 },
+    vary: (r) => ({ C: range(r, 5, 100, 0.5), P: range(r, 0.5, 20, 0.1), n: range(r, 100, 5000, 50), Lt: range(r, 5000, 60000, 1000) }),
+    valid: ({ C, P, n }) => {
+      const Lh = ((C / P) ** 3 * 1e6) / (60 * n);
+      return C / P >= 3 && C / P <= 20 && Lh >= 1000 && Lh <= 200000;
+    },
+    build: ({ C, P, n, Lt }) => {
+      const L10 = (C / P) ** 3; // 10⁶ rev
+      const Lh = (L10 * 1e6) / (60 * n);
+      const Creq = P * Math.cbrt((60 * n * Lt) / 1e6);
+      return {
+        statement: `기본 동정격하중 C = ${C} kN인 깊은 홈 볼 베어링이 동등가 하중 P = ${P} kN을 받으며 ${n} rpm으로 회전한다.`,
+        parts: [
+          part('(a)', '정격 수명 시간 L_h', Lh, 'h', 5),
+          part('(b)', `같은 하중·회전수에서 수명 ${Lt} h를 얻는 데 필요한 기본 동정격하중 C`, Creq, 'kN', 5),
+        ],
+        hints: [
+          '정격 수명 L₁₀(10⁶ 회전 단위)은 (C/P)의 거듭제곱입니다. 볼 베어링의 수명 지수는 3입니다.',
+          '회전 수를 시간으로 바꾸려면 1시간 동안의 회전 수 60n으로 나눕니다.',
+          '(b)는 수명 식을 C에 대해 풀면 됩니다. 목표 시간을 먼저 10⁶ 회전 단위로 바꾸세요.',
+        ],
+        solution: [
+          `L₁₀ = (C/P)³ = (${C}/${P})³ = ${fmt(L10)} × 10⁶ rev`,
+          `L_h = L₁₀ × 10⁶ / (60n) = ${fmt(L10 * 1e6)} / (60 × ${n}) = ${fmt(Lh)} h`,
+          `목표 수명을 회전 수로: L = 60 × ${n} × ${Lt} / 10⁶ = ${fmt((60 * n * Lt) / 1e6)} × 10⁶ rev`,
+          `C = P·L^(1/3) = ${P} × ${fmt((60 * n * Lt) / 1e6)}^(1/3) = ${fmt(Creq)} kN → 이보다 큰 C를 가진 베어링을 고른다.`,
+          '롤러 베어링이면 수명 지수 10/3을 쓴다. 하중을 절반으로 줄이면 볼 베어링 수명은 8배가 된다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-friction-wheel',
+    subjectId: 'machine_design',
+    topic: '마찰차',
+    title: '원통 마찰차의 지름과 누르는 힘',
+    defaults: { D1: 300, n1: 600, n2: 300, P: 2, mu: 0.25 },
+    vary: (r) => ({
+      D1: range(r, 100, 500, 10),
+      n1: range(r, 200, 1500, 50),
+      n2: range(r, 100, 1500, 50),
+      P: range(r, 0.5, 10, 0.5),
+      mu: range(r, 0.15, 0.35, 0.01),
+    }),
+    valid: ({ D1, n1, n2, P, mu }) => {
+      const v = (PI * D1 * n1) / 60000;
+      const Q = (P * 1e3) / v / mu;
+      return n1 !== n2 && n2 / n1 >= 1 / 3 && n2 / n1 <= 3 && v <= 30 && Q <= 30000;
+    },
+    build: ({ D1, n1, n2, P, mu }) => {
+      const D2 = (D1 * n1) / n2;
+      const v = (PI * D1 * n1) / 60000;
+      const F = (P * 1e3) / v;
+      const Q = F / mu;
+      return {
+        statement: `두 축을 원통 마찰차로 연결해 동력 P = ${P} kW를 전달한다. 원동차의 지름은 D₁ = ${D1} mm, 회전수는 n₁ = ${n1} rpm이고, 종동차는 n₂ = ${n2} rpm으로 돌아야 한다. 접촉면의 마찰계수는 μ = ${mu}이고 미끄럼은 없다고 본다.`,
+        parts: [
+          part('(a)', '종동차의 지름 D₂', D2, 'mm', 3),
+          part('(b)', '접촉점의 원주 속도 v', v, 'm/s', 3),
+          part('(c)', '두 마찰차를 밀어붙이는 데 필요한 힘 Q', Q / 1e3, 'kN', 4),
+        ],
+        hints: [
+          '미끄럼이 없으면 두 바퀴의 접촉점 원주 속도가 같습니다. 그래서 지름과 회전수는 반비례합니다.',
+          '원주 속도는 πDn/60입니다. 지름을 m로 바꾸세요.',
+          '전달할 접선력은 동력 ÷ 속도이고, 마찰로 이 힘을 내려면 누르는 힘에 μ를 곱한 값이 접선력 이상이어야 합니다.',
+        ],
+        solution: [
+          `D₁n₁ = D₂n₂ → D₂ = D₁·n₁/n₂ = ${D1} × ${n1}/${n2} = ${fmt(D2)} mm`,
+          `v = πD₁n₁/60 = π × ${fmt(D1 / 1000)} × ${n1}/60 = ${fmt(v)} m/s`,
+          `전달 접선력 F = P/v = ${fmt(P * 1e3)} / ${fmt(v)} = ${fmt(F)} N`,
+          `μQ ≥ F → Q = F/μ = ${fmt(F)} / ${mu} = ${fmt(Q)} N = ${fmt(Q / 1e3)} kN`,
+          '누르는 힘 Q는 그대로 베어링 하중이 되므로, 큰 동력에는 마찰차보다 기어나 벨트가 유리하다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-spur-gear',
+    subjectId: 'machine_design',
+    topic: '기어',
+    title: '표준 평기어 한 쌍의 치수와 전달력',
+    defaults: { m: 4, Z1: 20, Z2: 60, n1: 1200, P: 10 },
+    vary: (r) => ({
+      m: pick(r, [1.5, 2, 2.5, 3, 4, 5, 6, 8]),
+      Z1: range(r, 17, 40, 1),
+      Z2: range(r, 20, 150, 1),
+      n1: range(r, 300, 3600, 50),
+      P: range(r, 0.5, 50, 0.5),
+    }),
+    valid: ({ m, Z1, Z2, n1, P }) => {
+      const v = (PI * m * Z1 * n1) / 60000;
+      return Z2 > Z1 && Z2 / Z1 <= 6 && v <= 25 && (P * 1e3) / v <= 20000;
+    },
+    build: ({ m, Z1, Z2, n1, P }) => {
+      const C = (m * (Z1 + Z2)) / 2;
+      const n2 = (n1 * Z1) / Z2;
+      const v = (PI * m * Z1 * n1) / 60000;
+      const F = (P * 1e3) / v;
+      return {
+        statement: `모듈 m = ${m} mm인 표준 평기어 한 쌍에서 피니언 잇수 Z₁ = ${Z1}, 기어 잇수 Z₂ = ${Z2}이다. 피니언이 ${n1} rpm으로 회전하며 동력 P = ${P} kW를 전달한다.`,
+        parts: [
+          part('(a)', '중심거리 C', C, 'mm', 3),
+          part('(b)', '기어의 회전수 n₂', n2, 'rpm', 2),
+          part('(c)', '피치원 위의 원주 속도 v', v, 'm/s', 2),
+          part('(d)', '피치원에서 전달되는 접선력 F', F, 'N', 3),
+        ],
+        hints: [
+          '피치원 지름은 모듈 × 잇수입니다. 맞물린 두 피치원은 서로 접하므로 중심거리는 두 반지름의 합입니다.',
+          '맞물린 기어는 피치원 원주 속도가 같으므로 회전수는 잇수에 반비례합니다.',
+          '접선력은 동력 ÷ 피치원 원주 속도입니다.',
+        ],
+        solution: [
+          `피치원 지름 D₁ = mZ₁ = ${fmt(m * Z1)} mm, D₂ = mZ₂ = ${fmt(m * Z2)} mm`,
+          `C = (D₁ + D₂)/2 = m(Z₁ + Z₂)/2 = ${fmt(C)} mm`,
+          `n₂ = n₁·Z₁/Z₂ = ${n1} × ${Z1}/${Z2} = ${fmt(n2)} rpm (속도비 ${fmt(Z2 / Z1, 3)})`,
+          `v = πD₁n₁/60 = π × ${fmt((m * Z1) / 1000)} × ${n1}/60 = ${fmt(v)} m/s`,
+          `F = P/v = ${fmt(P * 1e3)} / ${fmt(v)} = ${fmt(F)} N`,
+          '이 접선력으로 루이스 식(굽힘)과 면압 강도를 검토해 이폭을 정한다. 압력각 20° 표준 기어는 잇수 17개 이상이면 언더컷이 생기지 않는다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-flat-belt',
+    subjectId: 'machine_design',
+    topic: '벨트',
+    title: '평벨트의 장력과 전달 동력',
+    defaults: { T1: 1500, mu: 0.3, theta: 165, v: 10 },
+    vary: (r) => ({ T1: range(r, 300, 5000, 50), mu: range(r, 0.2, 0.4, 0.01), theta: range(r, 120, 180, 1), v: range(r, 5, 30, 0.5) }),
+    build: ({ T1, mu, theta, v }) => {
+      const ratio = Math.exp(mu * theta * DEG);
+      const T2 = T1 / ratio;
+      const Te = T1 - T2;
+      const P = (Te * v) / 1000;
+      return {
+        statement: `평벨트가 작은 풀리에 접촉각 θ = ${theta}°로 감겨 있고, 벨트와 풀리 사이의 마찰계수는 μ = ${mu}이다. 긴장측 장력은 허용값인 T₁ = ${T1} N이고 벨트 속도는 v = ${v} m/s이다. 원심력의 영향은 무시하며 벨트는 미끄러지기 직전 상태이다.`,
+        parts: [
+          part('(a)', '이완측 장력 T₂', T2, 'N', 3),
+          part('(b)', '유효 장력 Tₑ', Te, 'N', 3),
+          part('(c)', '전달 동력 P', P, 'kW', 4),
+        ],
+        hints: [
+          '미끄러지기 직전 두 장력의 비는 오일러 식 e^(μθ)입니다. 접촉각은 라디안으로 바꾸세요.',
+          '풀리를 돌리는 데 실제로 쓰이는 힘은 두 장력의 차이입니다.',
+          '동력 = 힘 × 속도입니다.',
+        ],
+        solution: [
+          `θ = ${theta}° = ${fmt(theta * DEG)} rad, μθ = ${fmt(mu * theta * DEG)}`,
+          `T₁/T₂ = e^(μθ) = ${fmt(ratio)} → T₂ = ${T1}/${fmt(ratio)} = ${fmt(T2)} N`,
+          `Tₑ = T₁ − T₂ = ${T1} − ${fmt(T2)} = ${fmt(Te)} N`,
+          `P = Tₑ·v = ${fmt(Te)} × ${v} = ${fmt(Te * v)} W = ${fmt(P)} kW`,
+          '속도가 빨라지면 원심 장력 mv²이 긴장측 허용 장력의 일부를 차지하므로, 고속에서는 이를 빼고 계산해야 한다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-block-brake',
+    subjectId: 'machine_design',
+    topic: '브레이크',
+    title: '단식 블록 브레이크의 조작력과 압력',
+    defaults: { D: 400, T: 200, mu: 0.3, a: 1000, b: 200, w: 60, e: 100 },
+    vary: (r) => ({
+      D: range(r, 200, 800, 20),
+      T: range(r, 50, 1500, 10),
+      mu: range(r, 0.2, 0.5, 0.01),
+      a: range(r, 400, 1500, 50),
+      b: range(r, 80, 400, 10),
+      w: range(r, 40, 150, 5),
+      e: range(r, 60, 200, 10),
+    }),
+    valid: ({ D, T, mu, a, b, w, e }) => {
+      const N = (2 * T) / (mu * (D / 1000));
+      const F = (N * b) / a;
+      return b <= a / 2 && e <= D / 2 && F >= 50 && F <= 1000 && N / (w * e) <= 1;
+    },
+    build: ({ D, T, mu, a, b, w, e }) => {
+      const N = (2 * T) / (mu * (D / 1000));
+      const F = (N * b) / a;
+      const q = N / (w * e);
+      return {
+        statement: `지름 D = ${D} mm인 드럼에 제동 토크 T = ${T} N·m를 걸려고 한다. 단식 블록 브레이크의 레버는 힌지에서 블록 중심까지 b = ${b} mm, 힌지에서 손잡이(조작력 F의 작용점)까지 a = ${a} mm이고, 힌지는 마찰력의 작용선 위에 있다(c = 0). 블록의 폭은 ${w} mm, 접촉 길이는 ${e} mm, 마찰계수는 μ = ${mu}이다.`,
+        parts: [
+          part('(a)', '블록이 드럼을 누르는 힘 N', N, 'N', 3),
+          part('(b)', '레버 끝에 가해야 할 조작력 F', F, 'N', 4),
+          part('(c)', '블록의 평균 접촉 압력 q', q, 'MPa', 3),
+        ],
+        hints: [
+          '제동 토크는 마찰력 μN이 드럼 반지름에서 만드는 모멘트입니다.',
+          '레버를 자유물체로 떼어 힌지에 대한 모멘트 평형을 세우세요. c = 0이면 마찰력은 힌지에 모멘트를 만들지 않습니다.',
+          '압력은 누르는 힘을 블록의 투영 접촉 면적(폭 × 길이)으로 나눈 값입니다.',
+        ],
+        solution: [
+          `T = μN·(D/2) → N = 2T/(μD) = 2 × ${T} / (${mu} × ${fmt(D / 1000)}) = ${fmt(N)} N`,
+          `힌지에 대한 모멘트 평형: F·a = N·b → F = N·b/a = ${fmt(N)} × ${b}/${a} = ${fmt(F)} N`,
+          `q = N/(폭 × 길이) = ${fmt(N)} / (${w} × ${e}) = ${fmt(q)} MPa`,
+          'c ≠ 0이면 마찰력 μN이 힌지에 모멘트를 만들어, 드럼 회전 방향에 따라 필요한 조작력이 달라진다.',
+        ],
+      };
+    },
+  },
+  {
+    id: 'design-helical-spring',
+    subjectId: 'machine_design',
+    topic: '스프링',
+    title: '원통 코일 압축 스프링의 응력과 처짐',
+    defaults: { d: 6, D: 48, n: 10, W: 300 },
+    vary: (r) => ({ d: range(r, 2, 12, 0.5), D: range(r, 10, 120, 1), n: range(r, 3, 20, 1), W: range(r, 20, 3000, 10) }),
+    valid: ({ d, D, n, W }) => {
+      const C = D / d;
+      const K = (4 * C - 1) / (4 * C - 4) + 0.615 / C;
+      const tau = (K * 8 * W * D) / (PI * d ** 3);
+      const delta = (8 * n * D ** 3 * W) / (80e3 * d ** 4);
+      return C >= 4 && C <= 12 && tau >= 100 && tau <= 600 && delta <= 150;
+    },
+    build: ({ d, D, n, W }) => {
+      const C = D / d;
+      const K = (4 * C - 1) / (4 * C - 4) + 0.615 / C;
+      const tau = (K * 8 * W * D) / (PI * d ** 3);
+      const delta = (8 * n * D ** 3 * W) / (80e3 * d ** 4);
+      return {
+        statement: `소선 지름 d = ${d} mm, 코일 평균 지름 D = ${D} mm, 유효 감김 수 n = ${n}인 강제 원통 코일 압축 스프링에 축하중 W = ${W} N이 작용한다. 가로 탄성계수는 G = 80 GPa이다.`,
+        parts: [
+          part('(a)', '스프링 지수 C', C, undefined, 2),
+          part('(b)', '왈(Wahl)의 응력 수정계수를 적용한 최대 전단응력 τ', tau, 'MPa', 4),
+          part('(c)', '스프링의 처짐 δ', delta, 'mm', 4),
+        ],
+        hints: [
+          '스프링 지수는 코일 평균 지름과 소선 지름의 비입니다.',
+          '소선은 비틀림을 받는 가는 봉으로 볼 수 있습니다. 코일의 곡률과 직접 전단의 영향은 왈의 수정계수 K = (4C − 1)/(4C − 4) + 0.615/C로 보정합니다.',
+          '처짐은 소선 지름의 4제곱에 반비례하고 코일 지름의 세제곱에 비례합니다. 단위를 N과 mm(MPa)로 통일하면 편합니다.',
+        ],
+        solution: [
+          `C = D/d = ${D}/${d} = ${fmt(C)}`,
+          `K = (4C − 1)/(4C − 4) + 0.615/C = ${fmt(K)}`,
+          `τ = K·8WD/(πd³) = ${fmt(K)} × 8 × ${W} × ${D} / (π × ${d}³) = ${fmt(tau)} MPa`,
+          `δ = 8nD³W/(Gd⁴) = 8 × ${n} × ${D}³ × ${W} / (80000 × ${d}⁴) = ${fmt(delta)} mm`,
+          `스프링 상수 k = W/δ = ${fmt(W / delta)} N/mm. 스프링 지수가 작을수록(코일이 촘촘하게 감길수록) K가 커진다.`,
         ],
       };
     },

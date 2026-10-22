@@ -16,6 +16,7 @@ const SUBJECT_KEYWORDS = {
   thermodynamics: ['열역학', '절대온도(K)', '밀폐계/개방계'],
   fluid_mechanics: ['유체역학', '베르누이', '레이놀즈 수'],
   dynamics: ['기계동역학', 'ω_n = 2πf_n', '감쇠비 ζ'],
+  machine_design: ['기계설계', '표준 규격 선정', '파손 모드'],
 };
 
 describe('SUBJECTS', () => {

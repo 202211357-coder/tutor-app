@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/client.js';
 import { getProblems, peekProblems } from '../lib/problemCache.js';
+import { pickProblemSet } from '../lib/problemSet.js';
 import { penMark, teacherComment } from '../lib/teacher.js';
 import { fetchDifferentVariant, rememberRecent } from '../lib/variants.js';
 
@@ -100,7 +101,8 @@ function ProblemCard({ number, baseProblem, renumber, resetToken, bestPercent, o
   }
 
   const partResult = (label) => result?.parts.find((p) => p.label === label);
-  const isVariant = (problem.seed ?? 0) !== 0;
+  // 문제 세트로 받은 카드는 처음부터 변형 수치이므로, 받은 수치에서 바뀌었을 때만 표시한다.
+  const isVariant = (problem.seed ?? 0) !== (baseProblem.seed ?? 0);
 
   return (
     <article className="sheet" aria-busy={loading}>
@@ -221,9 +223,10 @@ function ProblemCard({ number, baseProblem, renumber, resetToken, bestPercent, o
 /**
  * 한 과목의 문제 목록. App이 과목별로 한 번만 만들고 숨김/표시만 바꾸므로,
  * 과목을 오가도 입력·채점 결과·바꾼 수치가 유지된다.
- * @param {{subjectId: string, active: boolean}} props
+ * setSize가 있으면(기계설계) 전체를 보여 주지 않고, 무작위로 고른 대상 setSize개를 새 수치로 출제한다.
+ * @param {{subjectId: string, active: boolean, setSize?: number}} props
  */
-export default function ProblemSolver({ subjectId, active }) {
+export default function ProblemSolver({ subjectId, active, setSize }) {
   const [problems, setProblems] = useState(() => peekProblems(subjectId));
   const [error, setError] = useState('');
   const [topic, setTopic] = useState('');
@@ -231,6 +234,10 @@ export default function ProblemSolver({ subjectId, active }) {
   const [renumber, setRenumber] = useState({ n: 0, ids: [] });
   const [resetToken, setResetToken] = useState(0);
   const [variantIds, setVariantIds] = useState([]);
+  const [deal, setDeal] = useState(null); // 문제 세트: { n, problems }
+  const [dealing, setDealing] = useState(false);
+  const dealRecent = useRef(new Map()); // 대상별로 최근에 낸 수치 (다시 뽑혀도 같은 수치를 피함)
+  const dealStarted = useRef(false);
 
   function handleSeedChange(id, seed) {
     setVariantIds((ids) => (seed === 0 ? ids.filter((x) => x !== id) : ids.includes(id) ? ids : [...ids, id]));
@@ -250,6 +257,38 @@ export default function ProblemSolver({ subjectId, active }) {
       .catch((err) => setError(err.message));
   }, [subjectId]);
 
+  async function dealNewSet(list = problems, previous = deal?.problems ?? []) {
+    setDealing(true);
+    setError('');
+    try {
+      const ids = pickProblemSet(
+        list.map((p) => p.id),
+        setSize,
+        previous.map((p) => p.id),
+      );
+      const next = await Promise.all(
+        ids.map((id) => {
+          const recent = dealRecent.current.get(id) ?? [list.find((p) => p.id === id)];
+          return fetchDifferentVariant(api.fetchProblemVariant, recent.at(-1), { recent });
+        }),
+      );
+      for (const p of next) dealRecent.current.set(p.id, rememberRecent(dealRecent.current.get(p.id) ?? [], p));
+      setDeal((d) => ({ n: (d?.n ?? 0) + 1, problems: next }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDealing(false);
+    }
+  }
+
+  // 문제 세트 과목은 목록이 준비되면 첫 세트를 바로 출제한다.
+  useEffect(() => {
+    if (setSize && problems?.length && !dealStarted.current) {
+      dealStarted.current = true;
+      dealNewSet(problems, []);
+    }
+  }, [setSize, problems]);
+
   // 다른 과목·탭에서 채점했을 수 있으므로, 화면에 다시 보일 때마다 최고 점수만 조용히 갱신한다.
   useEffect(() => {
     if (active) refreshBest();
@@ -258,6 +297,40 @@ export default function ProblemSolver({ subjectId, active }) {
   if (error) return <p className="error">문제를 불러오지 못했습니다: {error}</p>;
   if (!problems) return <div className="sheet skeleton" aria-label="문제를 불러오는 중" />;
   if (!problems.length) return <p>이 과목에는 아직 연습 문제가 없습니다.</p>;
+
+  if (setSize) {
+    if (!deal) return <div className="sheet skeleton" aria-label="문제를 출제하는 중" />;
+    const dealtIds = deal.problems.map((p) => p.id);
+    return (
+      <section className="problem-list">
+        <div className="toolbar">
+          <button type="button" className="primary-button" onClick={() => dealNewSet()} disabled={dealing}>
+            {dealing ? '출제 중…' : '새 문제 세트'}
+          </button>
+          <button type="button" className="ghost-button" onClick={() => setRenumber((r) => ({ n: r.n + 1, ids: dealtIds }))}>
+            같은 대상, 수치만 변경
+          </button>
+          <p className="set-info">
+            설계 대상 {problems.length}개 중 {deal.problems.length}개 출제 · {deal.problems.map((p) => p.topic).join(' · ')}
+          </p>
+        </div>
+        <div className={dealing ? 'problem-set is-loading' : 'problem-set'} aria-busy={dealing}>
+          {deal.problems.map((p, i) => (
+            <ProblemCard
+              key={`${deal.n}:${p.id}`}
+              number={i + 1}
+              baseProblem={p}
+              renumber={renumber}
+              resetToken={0}
+              bestPercent={bestByProblem[p.id]}
+              onGraded={refreshBest}
+              onSeedChange={() => {}}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   const topics = [...new Set(problems.map((p) => p.topic).filter(Boolean))];
   const visible = topic ? problems.filter((p) => p.topic === topic) : problems;

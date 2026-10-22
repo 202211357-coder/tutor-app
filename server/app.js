@@ -67,7 +67,7 @@ export function createApp({ tutorService, historyStore = createHistoryStore(), s
   });
 
   app.get('/api/subjects', (_req, res) => {
-    res.json(SUBJECTS.map(({ id, name, description }) => ({ id, name, description })));
+    res.json(SUBJECTS.map(({ id, name, description, setSize }) => ({ id, name, description, setSize })));
   });
 
   app.get('/api/problems', (req, res) => {

@@ -88,6 +88,48 @@ const RECOMPUTED = {
     '(a)': 16 / (2 * sqrt(800 * 2)),
     '(b)': sqrt(800 / 2) * sqrt(1 - (16 / (2 * sqrt(800 * 2))) ** 2),
   },
+  // ───── 기계설계 (기본 수치) ─────
+  'design-power-screw': (() => {
+    const lam = Math.atan(6 / (PI * 36));
+    const rho = Math.atan(0.1);
+    return { '(a)': (lam * 180) / PI, '(b)': 20000 * 0.018 * Math.tan(lam + rho), '(c)': Math.tan(lam) / Math.tan(lam + rho) };
+  })(),
+  'design-bolt-nut': {
+    '(a)': 10000 / ((PI / 4) * 17.294 ** 2),
+    '(b)': 10000 / ((PI / 4) * (20 ** 2 - 17.294 ** 2) * 30),
+    '(c)': (10000 / ((PI / 4) * (20 ** 2 - 17.294 ** 2) * 30)) * 2.5,
+  },
+  'design-riveted-lap-joint': { '(a)': 12000 / ((PI / 4) * 16 ** 2), '(b)': 12000 / ((50 - 16) * 10), '(c)': 34 / 50 },
+  // d = 50 mm → 키 14 × 9
+  'design-sunk-key': { '(a)': (2 * 600) / 0.05 / 1000, '(b)': 24000 / (14 * 70), '(c)': 24000 / (4.5 * 70) },
+  'design-shaft-combined': (() => {
+    const T = 10000 / ((2 * PI * 500) / 60);
+    const Te = Math.hypot(150, T);
+    return { '(a)': T, '(b)': Te, '(c)': (16 * Te * 1000) / (PI * 40 ** 3) };
+  })(),
+  'design-flange-coupling': (() => {
+    const T = 30000 / ((2 * PI * 600) / 60);
+    const F = T / 0.075 / 6;
+    return { '(a)': T, '(b)': F, '(c)': F / ((PI / 4) * 12 ** 2) };
+  })(),
+  'design-ball-bearing-life': { '(a)': (10 ** 3 * 1e6) / (60 * 1000), '(b)': 3 * Math.cbrt(1200) },
+  'design-friction-wheel': (() => {
+    const v = (PI * 0.3 * 600) / 60;
+    return { '(a)': 600, '(b)': v, '(c)': 2000 / v / 0.25 / 1000 };
+  })(),
+  'design-spur-gear': (() => {
+    const v = (PI * 0.08 * 1200) / 60;
+    return { '(a)': 160, '(b)': 400, '(c)': v, '(d)': 10000 / v };
+  })(),
+  'design-flat-belt': (() => {
+    const t2 = 1500 / Math.exp(0.3 * ((165 * PI) / 180));
+    return { '(a)': t2, '(b)': 1500 - t2, '(c)': ((1500 - t2) * 10) / 1000 };
+  })(),
+  'design-block-brake': { '(a)': 200 / (0.3 * 0.2), '(b)': (200 / (0.3 * 0.2)) * 0.2, '(c)': 200 / (0.3 * 0.2) / 6000 },
+  'design-helical-spring': (() => {
+    const K = 31 / 28 + 0.615 / 8;
+    return { '(a)': 8, '(b)': (K * 8 * 300 * 48) / (PI * 216), '(c)': (8 * 10 * 48 ** 3 * 300) / (80000 * 6 ** 4) };
+  })(),
 };
 
 describe('문제 데이터 구조', () => {
@@ -265,6 +307,64 @@ const FORMULAS = {
     const w = (2 * PI * n) / 60;
     return { '(a)': (m * R * R) / 2, '(b)': (m * R * R * w * w) / 4 / 1000 };
   },
+  // ───── 기계설계 ─────
+  'design-power-screw': ({ W, d2, p, mu }) => {
+    // 경사면 모델: 들어 올리는 수평력 P = W(p + μπd₂)/(πd₂ − μp), 토크 = P·d₂/2
+    const force = (W * 1e3 * (p + mu * PI * d2)) / (PI * d2 - mu * p);
+    const torque = (force * d2) / 2000;
+    const ideal = (W * 1e3 * p) / (2 * PI) / 1000; // 마찰 없는 토크 = W·리드/(2π)
+    return { '(a)': (Math.atan2(p, PI * d2) * 180) / PI, '(b)': torque, '(c)': ideal / torque };
+  },
+  'design-bolt-nut': ({ d, d1, p, W, q }) => {
+    const z = (4 * W * 1e3) / (PI * (d - d1) * (d + d1) * q);
+    return { '(a)': (4 * W * 1e3) / (PI * d1 * d1), '(b)': z, '(c)': z * p };
+  },
+  'design-riveted-lap-joint': ({ d, p, t, W }) => ({
+    '(a)': (4 * W * 1e3) / (PI * d * d),
+    '(b)': (W * 1e3) / (p * t - d * t),
+    '(c)': 1 - d / p,
+  }),
+  'design-sunk-key': ({ d, b, h, T, l }) => {
+    const F = T / (d / 2000); // N
+    return { '(a)': F / 1e3, '(b)': F / (b * l), '(c)': F / ((h / 2) * l) };
+  },
+  'design-shaft-combined': ({ P, n, M, d }) => {
+    const T = (P * 1e3 * 60) / (2 * PI * n);
+    const Te = Math.hypot(M, T);
+    return { '(a)': T, '(b)': Te, '(c)': (Te * (d / 2000)) / ((PI * (d / 1000) ** 4) / 32) / 1e6 };
+  },
+  'design-flange-coupling': ({ P, n, Db, z, delta }) => {
+    const T = (P * 1e3 * 60) / (2 * PI * n);
+    const F = T / (Db / 2000) / z;
+    return { '(a)': T, '(b)': F, '(c)': F / (PI * (delta / 2) ** 2) };
+  },
+  'design-ball-bearing-life': ({ C, P, n, Lt }) => ({
+    '(a)': ((C / P) ** 3 * 1e6) / n / 60,
+    '(b)': P * ((Lt * 60 * n) / 1e6) ** (1 / 3),
+  }),
+  'design-friction-wheel': ({ D1, n1, n2, P, mu }) => {
+    const v = (D1 / 2000) * ((2 * PI * n1) / 60);
+    return { '(a)': D1 * (n1 / n2), '(b)': v, '(c)': (P * 1e3) / (mu * v) / 1e3 };
+  },
+  'design-spur-gear': ({ m, Z1, Z2, n1, P }) => {
+    const r1 = (m * Z1) / 2000;
+    const v = r1 * ((2 * PI * n1) / 60);
+    return { '(a)': (m * Z1 + m * Z2) / 2, '(b)': n1 / (Z2 / Z1), '(c)': v, '(d)': (P * 1e3) / v };
+  },
+  'design-flat-belt': ({ T1, mu, theta, v }) => {
+    const t2 = T1 * Math.exp((-mu * theta * PI) / 180);
+    return { '(a)': t2, '(b)': T1 - t2, '(c)': ((T1 - t2) * v) / 1e3 };
+  },
+  'design-block-brake': ({ D, T, mu, a, b, w, e }) => {
+    const N = T / (mu * (D / 2000));
+    return { '(a)': N, '(b)': (N * b) / a, '(c)': N / (w * e) };
+  },
+  'design-helical-spring': ({ d, D, n, W }) => {
+    const C = D / d;
+    const K = (4 * C - 1) / (4 * C - 4) + 0.615 / C;
+    const k = (80e3 * d ** 4) / (8 * n * D ** 3); // N/mm
+    return { '(a)': C, '(b)': (K * 8 * W * C) / (PI * d * d), '(c)': W / k };
+  },
 };
 
 /** 화면에 보이는 "4.167 × 10⁶"을 학생이 키보드로 치는 형태 "4.167×10^6"으로 바꾼다. */
@@ -344,7 +444,15 @@ describe('변형 문제 (숫자 바꾸기)', () => {
     ['mom-bending-stress', (i) => i.params.h >= i.params.b],
     ['thermo-ideal-gas-tank', (i) => i.params.T2 > i.params.T1],
     ['fluid-pipe-contraction', (i) => i.params.D2 < i.params.D1],
-  ])('%s: 변형 문제도 물리적 가정(탄성 범위·박육·정지·부족감쇠·세장비 등)을 지킨다', (id, check) => {
+    ['design-bolt-nut', (i) => i.parts[0].answer.value <= 120 && i.parts[1].answer.value >= 3],
+    ['design-riveted-lap-joint', (i) => i.params.p >= 2.5 * i.params.d && i.parts[0].answer.value <= 100],
+    ['design-sunk-key', (i) => i.parts[1].answer.value <= 60 && i.parts[2].answer.value <= 150],
+    ['design-shaft-combined', (i) => i.parts[2].answer.value <= 60],
+    ['design-spur-gear', (i) => i.params.Z1 >= 17 && i.params.Z2 > i.params.Z1],
+    ['design-helical-spring', (i) => i.parts[0].answer.value >= 4 && i.parts[0].answer.value <= 12],
+    ['design-block-brake', (i) => i.params.b <= i.params.a / 2 && i.parts[2].answer.value <= 1],
+    ['design-flat-belt', (i) => i.params.theta <= 180],
+  ])('%s: 변형 문제도 물리적 가정(탄성 범위·박육·정지·부족감쇠·세장비·규격 범위 등)을 지킨다', (id, check) => {
     for (const seed of SEEDS) expect(check(getProblemInstance(id, seed)), `seed=${seed}`).toBe(true);
   });
 
@@ -384,6 +492,42 @@ describe('변형 문제 (숫자 바꾸기)', () => {
     const seq = [a(), a(), a()];
     expect([b(), b(), b()]).toEqual(seq);
     expect(seq.every((x) => x >= 0 && x < 1)).toBe(true);
+  });
+});
+
+describe('기계설계 문제의 규격 데이터', () => {
+  it('볼트 골지름은 d − 1.0825p (ISO 기본 치수)와 일치한다', () => {
+    const sizes = new Map();
+    for (let seed = 1; seed <= 400; seed++) {
+      const { size, d, d1, p } = getProblemInstance('design-bolt-nut', seed).params;
+      sizes.set(size, { d, d1, p });
+    }
+    expect([...sizes.keys()].sort()).toEqual(['M12', 'M16', 'M20', 'M24', 'M30']);
+    for (const [size, { d, d1, p }] of sizes) {
+      expect(size).toBe(`M${d}`);
+      expect(Math.abs(d1 - (d - 1.0825 * p))).toBeLessThan(0.001);
+    }
+  });
+
+  it.each([
+    [32, 10, 8],
+    [38, 10, 8],
+    [39, 12, 8],
+    [50, 14, 9],
+    [51, 16, 10],
+    [58, 16, 10],
+    [65, 18, 11],
+    [75, 20, 12],
+    [85, 22, 14],
+  ])('축 지름 %i mm → 키 %i × %i', (d, b, h) => {
+    for (let seed = 1; seed <= 2000; seed++) {
+      const params = getProblemInstance('design-sunk-key', seed).params;
+      if (params.d === d) {
+        expect([params.b, params.h]).toEqual([b, h]);
+        return;
+      }
+    }
+    throw new Error(`d = ${d}인 변형 문제를 찾지 못함`);
   });
 });
 
