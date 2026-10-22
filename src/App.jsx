@@ -144,7 +144,11 @@ export default function App() {
         )}
         {subjectViews.map((id) => (
           <div key={`practice:${id}`} className="view" hidden={!showing('practice', id)}>
-            <ProblemSolver subjectId={id} active={showing('practice', id)} />
+            <ProblemSolver
+              subjectId={id}
+              active={showing('practice', id)}
+              setSize={subjects.find((s) => s.id === id)?.setSize}
+            />
           </div>
         ))}
         {tabViews.includes('history') && (

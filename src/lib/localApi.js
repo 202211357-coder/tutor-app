@@ -24,7 +24,7 @@ export function createLocalApi({ history = createBrowserHistory() } = {}) {
   return {
     fetchConfig: async () => ({ tutorEnabled: false, edition: 'web' }),
 
-    fetchSubjects: async () => asJson(SUBJECTS.map(({ id, name, description }) => ({ id, name, description }))),
+    fetchSubjects: async () => asJson(SUBJECTS.map(({ id, name, description, setSize }) => ({ id, name, description, setSize }))),
 
     fetchProblems: async (subjectId) => asJson(listPublicProblems(subjectId)),
 

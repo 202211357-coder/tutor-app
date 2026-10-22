@@ -875,6 +875,23 @@ button:disabled {
   pointer-events: none;
 }
 
+/* 새 문제 세트를 받는 동안: 기존 세트를 흐리게 유지 */
+.problem-set {
+  transition: opacity 180ms ease;
+}
+
+.problem-set.is-loading {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.set-info {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 /* 처음 불러올 때 자리만 잡아 두는 회색 틀 */
 .skeleton {
   min-height: 240px;
